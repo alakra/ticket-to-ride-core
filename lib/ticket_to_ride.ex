@@ -1,0 +1,2 @@
+defmodule TicketToRide do
+end

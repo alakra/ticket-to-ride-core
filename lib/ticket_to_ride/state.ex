@@ -11,19 +11,36 @@ defmodule TicketToRide.State do
 
   def generate(options) do
     n = options[:number_of_players]
-    train_deck = generate_train_deck
 
+    players = generate_players(n)
+
+    train_deck  = shuffle_train_deck |> deal_train_hands(players)
+    ticket_deck = shuffle_ticket_deck |> deal_ticket_hands(players)
 
     %__MODULE__{
-      players: generate_players(n),
-      routes: generate_routes,
+      players: players,
       train_deck: train_deck,
+      ticket_deck: ticket_deck,
+      routes: generate_routes,
+      displayed_trains: []
       discard_deck: []
     }
   end
 
-  defp generate_train_deck do
-    TrainCard.breakdown
+  defp shuffle_train_deck do
+    TrainCard.shuffle
+  end
+
+  defp shuffle_ticket_deck do
+    TicketCard.shuffle
+  end
+
+  defp deal_train_hands(deck, players) do
+    TrainCard.deal_hands(deck, players)
+  end
+
+  defp deal_ticket_hands(deck, players) do
+    TicketCard.deal_hands(deck, players)
   end
 
   defp generate_players(n) do

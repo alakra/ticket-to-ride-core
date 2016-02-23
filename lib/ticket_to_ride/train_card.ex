@@ -8,14 +8,31 @@ defmodule TicketToRide.TrainCard do
     hopper: 12,
     coal: 12,
     caboose: 12,
-    locomotive: 12
+    locomotive: 14
   ]
 
-  defstruct [
-    type: nil
-  ]
+  def shuffle do
+    shuffle(@car_counts, [])
+  end
 
-  def breakdown do
-    @car_counts
+  def shuffle([], deck) do
+    deck
+  end
+
+  def shuffle(source, deck) do
+    [{train, n}] = Enum.take_random(source, 1)
+
+    calculate_remainder(source, train, n)
+    |> shuffle(deck ++ [train])
+  end
+
+  defp calculate_remainder(source, train, n) do
+    n = n - 1
+
+    if n == 0 do
+      Keyword.delete(source, train)
+    else
+      Keyword.put(source, train, n)
+    end
   end
 end

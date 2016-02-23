@@ -1,8 +1,6 @@
 defmodule TicketToRide.Route do
-  defstruct [
-    a: nil,
-    b: nil,
-    cost: 1
+  @routes [
+    {Vancouver, Calgary, 3, :any}
   ]
 
   def generate_all do

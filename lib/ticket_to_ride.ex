@@ -7,7 +7,7 @@ defmodule TicketToRide do
     import Supervisor.Spec
 
     children = [
-      worker(Engine, [[name: TicketToRide.Engine ]])
+      worker(Engine, [[name: TicketToRide.Engine]])
     ]
 
     opts = [

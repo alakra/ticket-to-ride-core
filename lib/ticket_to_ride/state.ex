@@ -3,11 +3,13 @@ defmodule TicketToRide.State do
     turn: 0,
     players: [],
     routes: [],
+    ticket_deck: [],
+    displayed_trains: [],
     train_deck: [],
     discard_deck: []
   ]
 
-  alias TicketToRide.{Player, Route, TrainCard}
+  alias TicketToRide.{Player, Router, TrainCard, TicketCard}
 
   def generate(options) do
     n = options[:number_of_players]
@@ -22,7 +24,7 @@ defmodule TicketToRide.State do
       train_deck: train_deck,
       ticket_deck: ticket_deck,
       routes: generate_routes,
-      displayed_trains: []
+      displayed_trains: [],
       discard_deck: []
     }
   end

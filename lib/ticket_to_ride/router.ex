@@ -1,9 +1,9 @@
 defmodule TicketToRide.Router do
-  alias TicketotRide.{NoRouteFoundError,
+  alias TicketotRide.{NoOriginFoundError,
                       NoDestinationSpecifiedError,
                       NoDistanceSpecifiedError}
 
-  defmodule Route do
+  defmodule Origin do
     defstruct [
       name: nil,
       destinations: %{}
@@ -21,72 +21,89 @@ defmodule TicketToRide.Router do
   defmacro __using__(_opts) do
     quote do
       import unquote(__MODULE__)
-      Module.register_attribute __MODULE__, :routes, accumulate: false, persist: false
+      Module.register_attribute __MODULE__, :origins, accumulate: false, persist: false
+      Module.put_attribute __MODULE__, :origins, %{}
       @before_compile unquote(__MODULE__)
     end
   end
 
+  # API
+
   defmacro defroute(name, args \\ []) do
     quote do
-      updated_routes = get(name, autocreate: true) |> update_routes(args)
-      @routes Map.merge(@routes, updated_routes)
+      @origins Map.merge(@origins, update_origins(@origins, unquote(name), unquote(args)))
     end
   end
 
-  def all do
-    @routes
+  defmacro __before_compile__(_env) do
+    quote do
+      def all do
+        @origins
+      end
+    end
   end
 
-  def get(name, opts \\ [autocreate: false]) do
-    case Map.fetch(@routes, name) do
-      {:ok, route} -> route
+  def update_origins(origins, name, args) do
+    source = get(origins, name, autocreate: true)
+
+    destination = get(origins, args[:to], autocreate: true)
+    destination_options = [
+      to: name,
+      distance: args[:distance],
+      trains: args[:trains]
+    ]
+
+    %{ name => update(source, args),
+       args[:to] => update(destination, destination_options) }
+  end
+
+  # Private
+
+  defp get(origins, name, opts \\ [autocreate: false]) do
+    case Map.fetch(origins, name) do
+      {:ok, origin} -> origin
       :error -> get_on_error(name, opts[:autocreate])
     end
   end
 
   defp get_on_error(name, autocreate) do
     if autocreate do
-      %Route{name: name}
+      %Origin{name: name}
     else
-      raise NoRouteFoundError, name: name
+      raise NoOriginFoundError, name: name
     end
   end
 
-  defp update_routes(route, args) do
-    [ build_original_route(route, args),
-      build_reverse_route(route, args)]
-  end
-
-  defp build_orginal_route(route, args) do
-    destination_name = extract_destination_name(route, args)
+  defp update(origin, args) do
+    destination_name = extract_destination_name(origin, args)
     trains = extract_trains(args)
 
-    destination = update_destination(route, destination_name, trains, args)
-    destinations = Map.put(route.destinations, destination_name, destination)
+    destination = update_destination(origin, destination_name, trains, args)
+    destinations = Map.put(origin.destinations, destination_name, destination)
 
-    %{route | destinations: destinations}
+    %{origin | destinations: destinations}
   end
 
-  def update_destination(route, destination, trains, args) do
-    case Map.fetch(route.destinations, destination) do
+  defp update_destination(origin, destination, trains, args) do
+    case Map.fetch(origin.destinations, destination) do
       {:ok, dest} ->
-        %{dest | trains: MapSet.union(destination.trains, trains)}
+        %{dest | trains: MapSet.union(dest.trains, trains)}
       :error ->
-        distance = extract_distance(args)
+        distance = extract_distance(origin, args)
         %Destination{name: destination, distance: distance, trains: trains}
     end
   end
 
-  defp extract_destination_name(route, args) do
+  defp extract_destination_name(origin, args) do
     case args[:to] do
-      nil -> raise NoDestinationSpecifiedError, from: route.name
+      nil -> raise NoDestinationSpecifiedError, from: origin.name
       destination -> destination
     end
   end
 
-  defp extract_distance(route, args) do
+  defp extract_distance(origin, args) do
     case args[:distance] do
-      nil -> raise NoDistanceSpecifiedError, from: route.name, to: args[:to]
+      nil -> raise NoDistanceSpecifiedError, from: origin.name, to: args[:to]
       distance -> distance
     end
   end

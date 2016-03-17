@@ -9,7 +9,7 @@ defmodule TicketToRide.State do
     discard_deck: []
   ]
 
-  alias TicketToRide.{Player, Router, TrainCard, TicketCard}
+  alias TicketToRide.{Player, Routes, TrainCard, TicketCard}
 
   def generate(options) do
     n = options[:number_of_players]
@@ -51,6 +51,6 @@ defmodule TicketToRide.State do
   end
 
   defp generate_routes do
-    Route.generate_all
+    Routes.all
   end
 end

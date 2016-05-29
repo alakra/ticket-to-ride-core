@@ -37,9 +37,8 @@ defmodule TicketToRide.Router do
 
   defmacro __before_compile__(_env) do
     quote do
-      def all do
-        @origins
-      end
+      def all, do: @origins
+      def get(name), do: Map.fetch(@origins, name)
     end
   end
 

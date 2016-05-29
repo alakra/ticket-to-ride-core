@@ -9,48 +9,43 @@ defmodule TicketToRide.State do
     discard_deck: []
   ]
 
-  alias TicketToRide.{Player, Routes, TrainCard, TicketCard}
+  alias TicketToRide.{Player, TrainCard, TicketCard}
 
-  def generate(options) do
-    n = options[:number_of_players]
+  # API
 
-    players = generate_players(n)
+  def generate(options \\ [players: 4]) do
+    players = generate_players(options[:players])
 
-    train_deck  = shuffle_train_deck |> deal_train_hands(players)
-    ticket_deck = shuffle_ticket_deck |> deal_ticket_hands(players)
+    {train_deck, players}   = shuffle_and_deal_from_train_deck(players)
+    {ticket_deck, players}  = shuffle_and_select_from_ticket_deck(players)
+    {displayed, train_deck} = display_trains(train_deck)
 
     %__MODULE__{
       players: players,
       train_deck: train_deck,
       ticket_deck: ticket_deck,
-      routes: generate_routes,
-      displayed_trains: [],
+      displayed_trains: displayed,
       discard_deck: []
-    }
+    } |> IO.inspect
   end
 
-  defp shuffle_train_deck do
-    TrainCard.shuffle
+  # Private
+
+  defp shuffle_and_deal_from_train_deck(players) do
+    TrainCard.shuffle |> TrainCard.deal_hands(players)
   end
 
-  defp shuffle_ticket_deck do
-    TicketCard.shuffle
+  defp shuffle_and_select_from_ticket_deck(players) do
+    TicketCard.shuffle |> TicketCard.select_hands(players)
   end
 
-  defp deal_train_hands(deck, players) do
-    TrainCard.deal_hands(deck, players)
-  end
-
-  defp deal_ticket_hands(deck, players) do
-    TicketCard.deal_hands(deck, players)
+  @display_train_count 7
+  defp display_trains(deck) do
+    Enum.split(deck, @display_train_count)
   end
 
   defp generate_players(n) do
     if n < 1 or n > 4, do: raise "You must choose between 1 and 4 players."
     for x <- 1..n, do: %Player{id: x}
-  end
-
-  defp generate_routes do
-    Routes.all
   end
 end

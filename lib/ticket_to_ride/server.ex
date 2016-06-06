@@ -1,7 +1,7 @@
 defmodule TicketToRide.Server do
   use GenServer
 
-  alias TicketToRide.ServerHandler
+  alias TicketToRide.{ServerHandler, Player}
 
   require Logger
 
@@ -13,6 +13,14 @@ defmodule TicketToRide.Server do
 
   def games do
     GenServer.call(__MODULE__, :games)
+  end
+
+  def register(user, pass) do
+    GenServer.call(__MODULE__, {:register, user, pass})
+  end
+
+  def login(user, pass) do
+    GenServer.call(__MODULE__, {:login, user, pass})
   end
 
   # Callbacks
@@ -31,6 +39,20 @@ defmodule TicketToRide.Server do
 
   def handle_call(:games, _from, state) do
     {:reply, state.games, state}
+  end
+
+  def handle_call({:register, user, pass}, _from, state) do
+    case Player.DB.register(user, pass) do
+      :ok -> {:reply, :ok, state}
+      {:error, msg} -> {:reply, {:error, msg}, state}
+    end
+  end
+
+  def handle_call({:login, user, pass}, _from, state) do
+    case Player.DB.login(user, pass) do
+      {:ok, token} -> {:reply, token, state}
+      {:error, msg} -> {:reply, {:error, msg}, state}
+    end
   end
 
   # Private

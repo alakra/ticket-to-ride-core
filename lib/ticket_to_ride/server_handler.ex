@@ -2,6 +2,8 @@ defmodule TicketToRide.ServerHandler do
   @behaviour :ranch_protocol
   @timeout 2 * 60 * 1000 # 2 minutes
 
+  require Logger
+
   alias TicketToRide.Server
 
   # API
@@ -20,14 +22,19 @@ defmodule TicketToRide.ServerHandler do
   defp wait_for_data(socket, transport) do
     case transport.recv(socket, 0, @timeout) do
       {:ok, data} -> handle_data(socket, transport, data)
-      {:error, :closed} -> Process.exit(self, :normal)
+      {:error, :closed} ->
+        Logger.info "Connection Closed:"
+        Process.exit(self, :normal)
+      {:error, :timeout} ->
+        Logger.info "Connection Timed Out:"
+        Process.exit(self, :normal)
     end
   end
 
   defp handle_data(socket, transport, data) do
     case Msgpax.unpack(data) do
       {:ok, payload} ->
-        transport.send(socket, payload |> interpret |> respond_with |> IO.inspect)
+        transport.send(socket, payload |> interpret |> respond_with)
       {:error, reason} ->
         transport.send(socket, respond_with([:error, reason]))
     end
@@ -49,20 +56,25 @@ defmodule TicketToRide.ServerHandler do
 
   # Context Free
 
-  defp perform(["list", "\n"]) do
+  defp perform(["list", _]) do
     [:list, Server.games, "\n"]
   end
 
-  defp perform(["statistics"]) do
+  defp perform(["register", user, pass, _]) do
+    [:register, Server.register(user, pass), "\n"]
   end
 
-  defp perform(["register", user, pass]) do
+  defp perform(["login", user, pass, _]) do
+    [:login, Server.login(user, pass), "\n"]
   end
 
-  defp perform(["login", user, pass]) do
+  defp perform(["statistics", "\n"]) do
   end
 
   # Context User Token
+
+  defp perform(["logout", token]) do
+  end
 
   defp perform(["status", token]) do
   end
@@ -74,9 +86,6 @@ defmodule TicketToRide.ServerHandler do
   end
 
   defp perform(["leave", token, options]) do
-  end
-
-  defp perform(["quit", token]) do
   end
 
   # Game Actions

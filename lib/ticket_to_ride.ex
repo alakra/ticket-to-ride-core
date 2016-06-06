@@ -3,7 +3,7 @@ defmodule TicketToRide do
 
   import Supervisor.Spec
 
-  alias TicketToRide.{Client, Server, CLI, Interface}
+  alias TicketToRide.{Player, Client, Server, CLI, Interface}
 
   # API
 
@@ -26,7 +26,8 @@ defmodule TicketToRide do
     port   = options[:port]
 
     if server do
-      [worker(Server, [[limit: limit, ip: ip, port: port]], restart: :permanent)]
+      [worker(Server, [[limit: limit, ip: ip, port: port]], restart: :permanent),
+       worker(Player.DB, [], restart: :permanent)]
     else
       [worker(Client, [[ip: ip, port: port]], restart: :transient),
        worker(Interface, [], restart: :transient)]

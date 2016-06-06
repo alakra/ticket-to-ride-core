@@ -13,6 +13,14 @@ defmodule TicketToRide.Client do
     Connection.call(__MODULE__, :list)
   end
 
+  def register(user, pass) do
+    Connection.call(__MODULE__, {:register, user, pass})
+  end
+
+  def login(user, pass) do
+    Connection.call(__MODULE__, {:login, user, pass})
+  end
+
   # Callbacks
 
   @timeout 5000
@@ -46,6 +54,16 @@ defmodule TicketToRide.Client do
     {:reply, recv_msg(state.conn), state}
   end
 
+  def handle_call({:register, user, pass}, _from, state) do
+    send_msg(state.conn, [:register, user, pass, "\n"])
+    {:reply, recv_msg(state.conn), state}
+  end
+
+  def handle_call({:login, user, pass}, _from, state) do
+    send_msg(state.conn, [:login, user, pass, "\n"])
+    {:reply, recv_msg(state.conn), state}
+  end
+
   # Private
 
   defp send_msg(conn, payload) do
@@ -55,6 +73,7 @@ defmodule TicketToRide.Client do
 
   defp recv_msg(conn) do
     Socket.Stream.recv!(conn)
+    |> IO.inspect
     |> Msgpax.unpack!
   end
 end

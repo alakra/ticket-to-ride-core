@@ -26,6 +26,7 @@ defmodule TicketToRide.Mixfile do
       {:ranch, "~> 1.2"},
       {:msgpax, "~> 0.8"},
       {:socket, "~> 0.3"},
+      {:uuid, "~> 1.1"},
       {:connection, "~> 1.0"}
     ]
   end

@@ -43,7 +43,7 @@ defmodule TicketToRide.ServerHandler do
   end
 
   defp respond_with(payload) do
-    Msgpax.pack!(payload)
+    Msgpax.pack!([payload|["\n"]])
   end
 
   defp interpret(payload) do
@@ -57,18 +57,18 @@ defmodule TicketToRide.ServerHandler do
   # Context Free
 
   defp perform(["list", _]) do
-    [:list, Server.games, "\n"]
+    [:list, Server.games]
   end
 
   defp perform(["register", user, pass, _]) do
-    [:register, Server.register(user, pass), "\n"]
+    [:register, Server.register(user, pass)]
   end
 
   defp perform(["login", user, pass, _]) do
-    [:login, Server.login(user, pass), "\n"]
+    [:login, Server.login(user, pass)]
   end
 
-  defp perform(["statistics", "\n"]) do
+  defp perform(["statistics", _]) do
   end
 
   # Context User Token
@@ -82,7 +82,8 @@ defmodule TicketToRide.ServerHandler do
   defp perform(["join", token, game_id]) do
   end
 
-  defp perform(["create", token, options]) do
+  defp perform(["create", token, options, _]) do
+    [:create, Server.create(token, options)]
   end
 
   defp perform(["leave", token, options]) do

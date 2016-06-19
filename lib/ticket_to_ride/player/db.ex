@@ -1,28 +1,41 @@
 defmodule TicketToRide.Player.DB do
   # TODO: Persist this data in Mnesia
 
+  alias TicketToRide.User
+
   def start_link do
     Agent.start_link(fn -> Map.new end, name: __MODULE__)
   end
 
-  def register(user, pass) do
-    existing_user = Agent.get(__MODULE__, &Map.get(&1, user))
+  def find_by(:token, token) do
+    result = Agent.get(__MODULE__, fn map ->
+      Enum.find(map, fn {_, v} -> v.token == token end)
+    end)
+
+    case result do
+      nil -> {:not_found}
+      _   -> {:ok, result}
+    end
+  end
+
+  def register(username, pass) do
+    existing_user = Agent.get(__MODULE__, &Map.get(&1, username))
 
     case existing_user do
       nil ->
-        Agent.update(__MODULE__, &Map.put(&1, user, %{pass: pass, token: nil}))
+        Agent.update(__MODULE__, &Map.put(&1, username, %User{pass: pass, token: nil}))
         :ok
       _ ->
         {:error, "User already registered."}
     end
   end
 
-  def login(user, pass) do
-    Agent.get(__MODULE__, &Map.get(&1, user))
+  def login(username, pass) do
+    Agent.get(__MODULE__, &Map.get(&1, username))
     |> has_valid_record
     |> has_valid_pass(pass)
     |> generate_token
-    |> update_record(user)
+    |> update_record(username)
   end
 
   # Private
@@ -46,11 +59,11 @@ defmodule TicketToRide.Player.DB do
   end
 
   defp generate_token({:error, error}), do: {:error, error}
-  defp generate_token(record), do: %{record | token: UUID.uuid1(:hex)}
+  defp generate_token(record), do: %User{record | token: UUID.uuid1(:hex)}
 
   defp update_record({:error, error}, _), do: {:error, error}
-  defp update_record(record, user) do
-    Agent.update(__MODULE__, &Map.put(&1, user, record))
+  defp update_record(record, username) do
+    Agent.update(__MODULE__, &Map.put(&1, username, record))
     {:ok, record.token}
   end
 end

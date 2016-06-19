@@ -13,8 +13,8 @@ defmodule TicketToRide.State do
 
   # API
 
-  def generate(options \\ [players: 4]) do
-    players = generate_players(options[:players])
+  def generate(users) do
+    players = generate_players_from_users(users)
 
     {train_deck, players}   = shuffle_and_deal_from_train_deck(players)
     {ticket_deck, players}  = shuffle_and_select_from_ticket_deck(players)
@@ -26,7 +26,7 @@ defmodule TicketToRide.State do
       ticket_deck: ticket_deck,
       displayed_trains: displayed,
       discard_deck: []
-    } |> IO.inspect
+    }
   end
 
   # Private
@@ -44,8 +44,7 @@ defmodule TicketToRide.State do
     Enum.split(deck, @display_train_count)
   end
 
-  defp generate_players(n) do
-    if n < 1 or n > 4, do: raise "You must choose between 1 and 4 players."
-    for x <- 1..n, do: %Player{id: x}
+  defp generate_players_from_users(users) do
+    Enum.map(users, &(%Player{user_id: user.id}))
   end
 end

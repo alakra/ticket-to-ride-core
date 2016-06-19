@@ -21,6 +21,10 @@ defmodule TicketToRide.Client do
     Connection.call(__MODULE__, {:login, user, pass})
   end
 
+  def create(token, options) do
+    Connection.call(__MODULE__, {:create, token, options})
+  end
+
   # Callbacks
 
   @timeout 5000
@@ -50,30 +54,33 @@ defmodule TicketToRide.Client do
   end
 
   def handle_call(:list, _from, state) do
-    send_msg(state.conn, [:list, "\n"])
+    send_msg(state.conn, [:list])
     {:reply, recv_msg(state.conn), state}
   end
 
   def handle_call({:register, user, pass}, _from, state) do
-    send_msg(state.conn, [:register, user, pass, "\n"])
+    send_msg(state.conn, [:register, user, pass])
     {:reply, recv_msg(state.conn), state}
   end
 
   def handle_call({:login, user, pass}, _from, state) do
-    send_msg(state.conn, [:login, user, pass, "\n"])
+    send_msg(state.conn, [:login, user, pass])
     {:reply, recv_msg(state.conn), state}
+  end
+
+  def handle_call({:create, token, options}, _from, state) do
+    send_msg(state.conn, [:create, token, options])
   end
 
   # Private
 
   defp send_msg(conn, payload) do
-    msg = Msgpax.pack!(payload)
+    msg = Msgpax.pack!([payload|["\n"]])
     Socket.Stream.send!(conn, msg)
   end
 
   defp recv_msg(conn) do
     Socket.Stream.recv!(conn)
-    |> IO.inspect
     |> Msgpax.unpack!
   end
 end

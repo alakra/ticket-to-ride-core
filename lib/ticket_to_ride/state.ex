@@ -45,6 +45,6 @@ defmodule TicketToRide.State do
   end
 
   defp generate_players_from_users(users) do
-    Enum.map(users, &(%Player{user_id: user.id}))
+    Enum.map(users, &(%Player{id: &1.id}))
   end
 end

@@ -72,6 +72,11 @@ defmodule TicketToRide.Client do
     send_msg(state.conn, [:create, token, options])
   end
 
+  def terminate(:connection_failed, state) do
+    IO.puts "Terminating: Client failed to connect."
+    Process.exit(self(), :normal)
+  end
+
   # Private
 
   defp send_msg(conn, payload) do

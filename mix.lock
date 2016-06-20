@@ -2,5 +2,5 @@
   "msgpax": {:hex, :msgpax, "0.8.2", "0e83d86e7cbf1bdcf7b870c25951df042ec19f9804a1a9c2fa59091a43ee2886", [:mix], []},
   "ranch": {:hex, :ranch, "1.2.1", "a6fb992c10f2187b46ffd17ce398ddf8a54f691b81768f9ef5f461ea7e28c762", [:make], []},
   "sfmt": {:hex, :sfmt, "0.13.0"},
-  "socket": {:hex, :socket, "0.3.2", "78cd3a6ad72407e8df517a72a9946eb4ffb80b01bbeec3795f5f37e657a5cb69", [:mix], []},
-  "uuid": {:hex, :uuid, "1.1.1", "5765703ccff655e0b2105be7284858848832cb2930b21d01f782393db73bce52", [:mix], []}}
+  "socket": {:hex, :socket, "0.3.5", "6c23772e7eda60f129f36dd69a61930aab18ae9b8d74d7f767c85355cf0b585d", [:mix], []},
+  "uuid": {:hex, :uuid, "1.1.4", "36c7734e4c8e357f2f67ba57fb61799d60c20a7f817b104896cca64b857e3686", [:mix], []}}

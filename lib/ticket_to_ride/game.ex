@@ -1,5 +1,5 @@
 defmodule TicketToRide.Game do
-  defstruct :id, :owner, :users, :gamestate
+  defstruct [:id, :owner, :users, :gamestate]
 
   use GenServer
 

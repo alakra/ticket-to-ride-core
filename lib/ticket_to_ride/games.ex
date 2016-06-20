@@ -1,4 +1,4 @@
-defmodule TickeToRide.Games do
+defmodule TicketToRide.Games do
   use Supervisor
 
   alias TicketToRide.Game
@@ -8,7 +8,7 @@ defmodule TickeToRide.Games do
   # API
 
   def start_link do
-    Supervisor.start_link(__MODULE__, [])
+    Supervisor.start_link(__MODULE__, [name: __MODULE__])
   end
 
   def init([]) do

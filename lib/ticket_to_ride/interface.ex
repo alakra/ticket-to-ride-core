@@ -9,7 +9,7 @@ defmodule TicketToRide.Interface do
 
   # Callbacks
 
-  def init(args) do
+  def init(_args) do
     {:ok, {}}
   end
 end

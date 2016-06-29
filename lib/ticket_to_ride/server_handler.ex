@@ -2,6 +2,8 @@ defmodule TicketToRide.ServerHandler do
   @behaviour :ranch_protocol
   @timeout 2 * 60 * 1000 # 2 minutes
 
+  require Logger
+
   alias TicketToRide.Server
 
   # API
@@ -20,49 +22,66 @@ defmodule TicketToRide.ServerHandler do
   defp wait_for_data(socket, transport) do
     case transport.recv(socket, 0, @timeout) do
       {:ok, data} -> handle_data(socket, transport, data)
-      {:error, :closed} -> Process.exit(self, :normal)
+      {:error, :closed} ->
+        Logger.info "Connection Closed:"
+        Process.exit(self, :normal)
+      {:error, :timeout} ->
+        Logger.info "Connection Timed Out:"
+        Process.exit(self, :normal)
     end
   end
 
   defp handle_data(socket, transport, data) do
     case Msgpax.unpack(data) do
-      {:ok, payload} ->
-        transport.send(socket, payload |> interpret |> respond_with |> IO.inspect)
+      {:ok, [payload|["\n"]]} ->
+        transport.send(socket, payload |> perform |> respond_with)
       {:error, reason} ->
         transport.send(socket, respond_with([:error, reason]))
+      _ ->
+        transport.send(socket, respond_with([:error, "cannot be unpacked"]))
     end
 
     wait_for_data(socket, transport)
   end
 
   defp respond_with(payload) do
-    Msgpax.pack!(payload)
-  end
-
-  defp interpret(payload) do
-    try do
-      payload |> perform
-    catch
-      e -> [] # TODO: Add some error handling for bad payloads
-    end
+    Msgpax.pack!([payload|["\n"]])
   end
 
   # Context Free
 
-  defp perform(["list", "\n"]) do
-    [:list, Server.games, "\n"]
-  end
-
-  defp perform(["statistics"]) do
+  defp perform(["list"]) do
+    case Server.games do
+      {:ok, list} -> list
+      {:error, msg} -> %{error: msg}
+    end
   end
 
   defp perform(["register", user, pass]) do
+    case Server.register(user, pass) do
+      :ok -> :registered
+      {:error, msg} -> %{error: msg}
+    end
   end
 
   defp perform(["login", user, pass]) do
+    case Server.login(user, pass) do
+      {:ok, token} -> token
+      {:error, msg} -> %{error: msg}
+    end
   end
 
   # Context User Token
+
+  defp perform(["create", token, options]) do
+    case Server.create(token, options) do
+      {:ok, game_id} -> game_id
+      {:error, msg} -> %{error: msg}
+    end
+  end
+
+  defp perform(["logout", token]) do
+  end
 
   defp perform(["status", token]) do
   end
@@ -70,13 +89,7 @@ defmodule TicketToRide.ServerHandler do
   defp perform(["join", token, game_id]) do
   end
 
-  defp perform(["create", token, options]) do
-  end
-
   defp perform(["leave", token, options]) do
-  end
-
-  defp perform(["quit", token]) do
   end
 
   # Game Actions
@@ -86,5 +99,7 @@ defmodule TicketToRide.ServerHandler do
 
   # No op
 
-  defp perform(msg), do: [:unknown_message, msg, "\n"]
+  defp perform(msg) do
+    [:unknown_message, msg]
+  end
 end

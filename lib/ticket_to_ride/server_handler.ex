@@ -33,10 +33,12 @@ defmodule TicketToRide.ServerHandler do
 
   defp handle_data(socket, transport, data) do
     case Msgpax.unpack(data) do
-      {:ok, payload} ->
-        transport.send(socket, payload |> interpret |> respond_with)
+      {:ok, [payload|["\n"]]} ->
+        transport.send(socket, payload |> perform |> respond_with)
       {:error, reason} ->
         transport.send(socket, respond_with([:error, reason]))
+      _ ->
+        transport.send(socket, respond_with([:error, "cannot be unpacked"]))
     end
 
     wait_for_data(socket, transport)
@@ -46,32 +48,37 @@ defmodule TicketToRide.ServerHandler do
     Msgpax.pack!([payload|["\n"]])
   end
 
-  defp interpret(payload) do
-    try do
-      payload |> perform
-    catch
-      e -> [] # TODO: Add some error handling for bad payloads
+  # Context Free
+
+  defp perform(["list"]) do
+    case Server.games do
+      {:ok, list} -> list
+      {:error, msg} -> %{error: msg}
     end
   end
 
-  # Context Free
-
-  defp perform(["list", _]) do
-    [:list, Server.games]
+  defp perform(["register", user, pass]) do
+    case Server.register(user, pass) do
+      :ok -> :registered
+      {:error, msg} -> %{error: msg}
+    end
   end
 
-  defp perform(["register", user, pass, _]) do
-    [:register, Server.register(user, pass)]
-  end
-
-  defp perform(["login", user, pass, _]) do
-    [:login, Server.login(user, pass)]
-  end
-
-  defp perform(["statistics", _]) do
+  defp perform(["login", user, pass]) do
+    case Server.login(user, pass) do
+      {:ok, token} -> token
+      {:error, msg} -> %{error: msg}
+    end
   end
 
   # Context User Token
+
+  defp perform(["create", token, options]) do
+    case Server.create(token, options) do
+      {:ok, game_id} -> game_id
+      {:error, msg} -> %{error: msg}
+    end
+  end
 
   defp perform(["logout", token]) do
   end
@@ -80,10 +87,6 @@ defmodule TicketToRide.ServerHandler do
   end
 
   defp perform(["join", token, game_id]) do
-  end
-
-  defp perform(["create", token, options, _]) do
-    [:create, Server.create(token, options)]
   end
 
   defp perform(["leave", token, options]) do
@@ -96,5 +99,7 @@ defmodule TicketToRide.ServerHandler do
 
   # No op
 
-  defp perform(msg), do: [:unknown_message, msg, "\n"]
+  defp perform(msg) do
+    [:unknown_message, msg]
+  end
 end

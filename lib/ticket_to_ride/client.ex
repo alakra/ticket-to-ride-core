@@ -44,7 +44,7 @@ defmodule TicketToRide.Client do
     Logger.debug "Attempting to connect to #{ip}:#{port}..."
     case Socket.TCP.connect(ip, port, packet: :line) do
       {:ok, conn} ->
-        Logger.debug "Connect successful."
+        Logger.debug "Connect successful"
         {:ok, %{state | conn: conn}}
       {:error, _} ->
         Logger.debug "Connect failed. Trying again in #{@timeout} ms..."
@@ -55,26 +55,43 @@ defmodule TicketToRide.Client do
 
   def handle_call(:list, _from, state) do
     send_msg(state.conn, [:list])
-    {:reply, recv_msg(state.conn), state}
+
+   case recv_msg(state.conn) do
+     list -> {:reply, {:ok, list}, state}
+     %{"error" => msg} -> {:reply, {:ok, []}, state}
+   end
   end
 
   def handle_call({:register, user, pass}, _from, state) do
     send_msg(state.conn, [:register, user, pass])
-    {:reply, recv_msg(state.conn), state}
+
+    case recv_msg(state.conn) do
+      "registered" -> {:reply, {:ok, :registered}, state}
+      %{"error" => msg} -> {:reply, {:error, msg}, state}
+    end
   end
 
   def handle_call({:login, user, pass}, _from, state) do
     send_msg(state.conn, [:login, user, pass])
-    {:reply, recv_msg(state.conn), state}
+
+    case recv_msg(state.conn) do
+      token -> {:reply, {:ok, token}, state}
+      %{"error" => msg} -> {:reply, {:error, msg}, state}
+    end
   end
 
   def handle_call({:create, token, options}, _from, state) do
     send_msg(state.conn, [:create, token, options])
+
+    case recv_msg(state.conn) do
+      game_id -> {:reply, {:ok, game_id}, state}
+      %{"error" => msg} -> {:reply, {:error, msg}, state}
+    end
   end
 
-  def terminate(:connection_failed, state) do
+  def terminate(:connection_failed, _) do
     IO.puts "Terminating: Client failed to connect."
-    Process.exit(self(), :normal)
+    System.halt(1)
   end
 
   # Private
@@ -85,7 +102,7 @@ defmodule TicketToRide.Client do
   end
 
   defp recv_msg(conn) do
-    Socket.Stream.recv!(conn)
-    |> Msgpax.unpack!
+    [payload|_] = Socket.Stream.recv!(conn) |> Msgpax.unpack!
+    payload
   end
 end

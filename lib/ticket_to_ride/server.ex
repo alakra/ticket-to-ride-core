@@ -42,7 +42,10 @@ defmodule TicketToRide.Server do
   end
 
   def handle_call(:games, _from, state) do
-    {:reply, Games.list, state}
+    case Games.list do
+      {:ok, list} -> {:reply, {:ok, list}, state}
+      {:error, msg} -> {:reply, {:error, msg}, state}
+    end
   end
 
   def handle_call({:register, user, pass}, _from, state) do
@@ -54,7 +57,7 @@ defmodule TicketToRide.Server do
 
   def handle_call({:login, user, pass}, _from, state) do
     case Player.DB.login(user, pass) do
-      {:ok, token} -> {:reply, token, state}
+      {:ok, token} -> {:reply, {:ok, token}, state}
       {:error, msg} -> {:reply, {:error, msg}, state}
     end
   end
@@ -62,7 +65,8 @@ defmodule TicketToRide.Server do
   def handle_call({:create, token, options}, _from, state) do
     case Player.DB.find_by(:token, token) do
       {:ok, {user, _}} ->
-        {:reply, Games.create(user, options) |> Game.id, state}
+        {:ok, game} = Games.create(user, options)
+        {:reply, {:ok, Game.id(game)}, state}
       {:not_found} ->
         {:reply, {:error, :not_found}, state}
     end

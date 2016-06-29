@@ -3,7 +3,7 @@ defmodule TicketToRide do
 
   import Supervisor.Spec
 
-  alias TicketToRide.{Player, Client, Games, Server, CLI, Interface}
+  alias TicketToRide.{Player, Client, Games, Server, Interface}
 
   # API
 

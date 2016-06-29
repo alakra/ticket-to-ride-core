@@ -1,5 +1,5 @@
 defmodule TicketToRide.Router do
-  alias TicketotRide.{NoOriginFoundError,
+  alias TicketToRide.{NoOriginFoundError,
                       NoDestinationSpecifiedError,
                       NoDistanceSpecifiedError}
 

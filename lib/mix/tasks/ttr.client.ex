@@ -7,6 +7,6 @@ defmodule Mix.Tasks.Ttr.Client do
 
   def run(args) do
     Application.put_env(:ticket_to_ride, :options, TTR.options(:client, args))
-    Mix.Task.run "run", []
+    Mix.Task.run "run", TTR.run_args
   end
 end

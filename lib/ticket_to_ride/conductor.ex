@@ -61,7 +61,7 @@ defmodule TicketToRide.Conductor do
 
   defp verify_value(name, to, args) do
     case args[:value] do
-      nil -> raise NoValueSpecifiedError, from: name, to: args[:to]
+      nil -> raise NoValueSpecifiedError, from: name, to: to
       value -> value
     end
   end

@@ -2,6 +2,7 @@ defmodule TicketToRide.Games do
   use Supervisor
 
   alias TicketToRide.Game
+  alias TicketToRide.Games.Index
 
   require Logger
 
@@ -20,14 +21,21 @@ defmodule TicketToRide.Games do
   end
 
   def list do
-    list = Supervisor.which_children(__MODULE__)
-    |> Enum.map(fn {_, child, _, _} -> Game.id(child) end)
-
-    {:ok, list}
+    {:ok, Index.all |> Map.keys}
   end
 
-  def create(user, options) do
-    Supervisor.start_child(__MODULE__, [[user: user, options: options]])
+  def create(options) do
+    case Supervisor.start_child(__MODULE__, [options]) do
+      {:ok, game} -> {:ok, Game.id(game) |> Index.put(game)}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  def join(game_id, user_session) do
+    case Index.get(game_id) do
+      {:ok, game} -> Game.join(game, user_session)
+      :error -> {:error, :not_found}
+    end
   end
 
   def destroy(game) do

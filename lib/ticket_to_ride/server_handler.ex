@@ -1,6 +1,6 @@
 defmodule TicketToRide.ServerHandler do
   @behaviour :ranch_protocol
-  @timeout 2 * 60 * 1000 # 2 minutes
+  @timeout 60 * 60 * 1000 # 60 minutes
 
   require Logger
 
@@ -21,7 +21,8 @@ defmodule TicketToRide.ServerHandler do
 
   defp wait_for_data(socket, transport) do
     case transport.recv(socket, 0, @timeout) do
-      {:ok, data} -> handle_data(socket, transport, data)
+      {:ok, data} ->
+        handle_data(socket, transport, data)
       {:error, :closed} ->
         Logger.info "Connection Closed:"
         Process.exit(self, :normal)
@@ -80,13 +81,17 @@ defmodule TicketToRide.ServerHandler do
     end
   end
 
+  defp perform(["join", token, game_id]) do
+    case Server.join(token, game_id) do
+      {:ok, :joined} -> %{joined: game_id}
+      {:error, msg} -> %{error: msg}
+    end
+  end
+
   defp perform(["logout", token]) do
   end
 
   defp perform(["status", token]) do
-  end
-
-  defp perform(["join", token, game_id]) do
   end
 
   defp perform(["leave", token, options]) do

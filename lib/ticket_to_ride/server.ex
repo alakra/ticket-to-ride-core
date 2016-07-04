@@ -27,6 +27,10 @@ defmodule TicketToRide.Server do
     GenServer.call(__MODULE__, {:create, token, options})
   end
 
+  def join(token, game_id) do
+    GenServer.call(__MODULE__, {:join, token, game_id})
+  end
+
   # Callbacks
 
   @acceptors 10
@@ -56,19 +60,26 @@ defmodule TicketToRide.Server do
   end
 
   def handle_call({:login, user, pass}, _from, state) do
-    case Player.DB.login(user, pass) do
-      {:ok, token} -> {:reply, {:ok, token}, state}
+    case Player.Session.new(user, pass) do
+      {:ok, session} -> {:reply, {:ok, session.token}, state}
       {:error, msg} -> {:reply, {:error, msg}, state}
     end
   end
 
   def handle_call({:create, token, options}, _from, state) do
-    case Player.DB.find_by(:token, token) do
-      {:ok, {user, _}} ->
-        {:ok, game} = Games.create(user, options)
-        {:reply, {:ok, Game.id(game)}, state}
-      {:not_found} ->
-        {:reply, {:error, :not_found}, state}
+    case Player.Session.get(token) do
+      {:ok, user_session} ->
+        opts = Keyword.put(options, :user_session, user_session)
+        {:reply, Games.create(opts), state}
+      other ->
+        {:reply, other, state}
+    end
+  end
+
+  def handle_call({:join, token, game_id}, _from, state) do
+    case Player.Session.get(token) do
+      {:ok, user_session} -> join_game(game_id, user_session, state)
+      other -> {:reply, other, state}
     end
   end
 
@@ -80,5 +91,14 @@ defmodule TicketToRide.Server do
     |> :inet.parse_address
 
     ip_address
+  end
+
+  defp join_game(game_id, user_session, state) do
+    case Games.join(game_id, user_session) do
+      :ok ->
+        {:reply, {:ok, :joined}, state}
+      {:error, msg} ->
+        {:reply, {:error, msg}, state}
+    end
   end
 end

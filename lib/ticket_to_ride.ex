@@ -28,6 +28,8 @@ defmodule TicketToRide do
     if server do
       [worker(Server, [[limit: limit, ip: ip, port: port]], restart: :permanent),
        worker(Player.DB, [], restart: :permanent),
+       worker(Player.Session, [], restart: :permanent),
+       worker(Games.Index, [], restart: :permanent),
        supervisor(Games, [], restart: :permanent)
       ]
     else

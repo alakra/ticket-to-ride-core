@@ -31,6 +31,10 @@ defmodule TicketToRide.Server do
     GenServer.call(__MODULE__, {:join, token, game_id})
   end
 
+  def leave(token, game_id) do
+    GenServer.call(__MODULE__, {:leave, token, game_id})
+  end
+
   # Callbacks
 
   @acceptors 10
@@ -83,6 +87,13 @@ defmodule TicketToRide.Server do
     end
   end
 
+  def handle_call({:leave, token, game_id}, _from, state) do
+    case Player.Session.get(token) do
+      {:ok, user_session} -> leave_game(game_id, user_session, state)
+      other -> {:reply, other, state}
+    end
+  end
+
   # Private
 
   defp parse_ip(ip) do
@@ -97,6 +108,15 @@ defmodule TicketToRide.Server do
     case Games.join(game_id, user_session) do
       :ok ->
         {:reply, {:ok, :joined}, state}
+      {:error, msg} ->
+        {:reply, {:error, msg}, state}
+    end
+  end
+
+  defp leave_game(game_id, user_session, state) do
+    case Games.leave(game_id, user_session) do
+      :ok ->
+        {:reply, {:ok, :left}, state}
       {:error, msg} ->
         {:reply, {:error, msg}, state}
     end

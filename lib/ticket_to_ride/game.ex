@@ -36,6 +36,10 @@ defmodule TicketToRide.Game do
     GenServer.call(game, {:join, user_session})
   end
 
+  def leave(game, user_session) do
+    GenServer.call(game, {:leave, user_session})
+  end
+
   # Callback
 
   @default_max_players 4
@@ -67,6 +71,14 @@ defmodule TicketToRide.Game do
     end
   end
 
+  def handle_call({:leave, user_session}, _from, state) do
+    with :ok <- validate_user_joined(user_session, state) do
+      {:reply, :ok, %{state | users: List.delete(state.users, user_session)}}
+    else
+      {:error, msg} -> {:reply, {:error, msg}, state}
+    end
+  end
+
   def handle_call(:start, _from, state) do
     {:reply, :ok, State.generate(state.users)}
   end
@@ -87,10 +99,22 @@ defmodule TicketToRide.Game do
   end
 
   defp validate_no_duplicate_players(user_session, state) do
-    if Enum.member?(state.users, user_session) do
+    if is_joined?(user_session, state.users) do
       {:error, :already_joined}
     else
       :ok
     end
+  end
+
+  defp validate_user_joined(user_session, state) do
+    if is_joined?(user_session, state.users)do
+      :ok
+    else
+      {:error, :not_joined}
+    end
+  end
+
+  defp is_joined?(user_session, users) do
+    !!Enum.find(users, false, fn user -> user.token == user_session.token end)
   end
 end

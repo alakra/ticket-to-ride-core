@@ -88,13 +88,17 @@ defmodule TicketToRide.ServerHandler do
     end
   end
 
+  defp perform(["leave", token, game_id]) do
+    case Server.leave(token, game_id) do
+      {:ok, :left} -> %{ok: "left"}
+      {:error, msg} -> %{error: msg}
+    end
+  end
+
   defp perform(["logout", token]) do
   end
 
   defp perform(["status", token]) do
-  end
-
-  defp perform(["leave", token, options]) do
   end
 
   # Game Actions

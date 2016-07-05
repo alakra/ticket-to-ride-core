@@ -27,6 +27,12 @@
 {:ok, {:joined, _}} = TicketToRide.Client.join(token_b, game_id)
 ```
 
+## Leave a specific game
+
+```
+{:ok, :left} = TicketToRide.Client.leave(token_b, game_id)
+```
+
 ## Join first available game
 
 ```

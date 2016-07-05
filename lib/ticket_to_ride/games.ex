@@ -38,6 +38,13 @@ defmodule TicketToRide.Games do
     end
   end
 
+  def leave(game_id, user_session) do
+    case Index.get(game_id) do
+      {:ok, game} -> Game.leave(game, user_session)
+      :error -> {:error, :not_found}
+    end
+  end
+
   def destroy(game) do
     case Supervisor.terminate_child(__MODULE__, game) do
       :ok -> :ok

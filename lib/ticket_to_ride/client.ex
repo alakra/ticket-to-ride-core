@@ -29,6 +29,10 @@ defmodule TicketToRide.Client do
     Connection.call(__MODULE__, {:join, token, game_id})
   end
 
+  def leave(token, game_id) do
+    Connection.call(__MODULE__, {:leave, token, game_id})
+  end
+
   # Callbacks
 
   @timeout 5000
@@ -98,6 +102,15 @@ defmodule TicketToRide.Client do
 
     case recv_msg(state.conn) do
       %{"joined" => actual_id} -> {:reply, {:ok, {:joined, actual_id}}, state}
+      %{"error" => msg} -> {:reply, {:error, msg}, state}
+    end
+  end
+
+  def handle_call({:leave, token, game_id}, _from, state) do
+    send_msg(state.conn, [:leave, token, game_id])
+
+    case recv_msg(state.conn) do
+      %{"ok" => _msg} -> {:reply, {:ok, :left}, state}
       %{"error" => msg} -> {:reply, {:error, msg}, state}
     end
   end

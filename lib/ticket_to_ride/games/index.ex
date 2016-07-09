@@ -12,7 +12,7 @@ defmodule TicketToRide.Games.Index do
   end
 
   def remove(id) do
-    Agent.get_and_update(__MODULE__, &(Map.drop(&1, id)))
+    Agent.get_and_update(__MODULE__, &({id, Map.drop(&1, [id])}))
   end
 
   def all do

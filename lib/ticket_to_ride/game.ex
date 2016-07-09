@@ -73,7 +73,15 @@ defmodule TicketToRide.Game do
 
   def handle_call({:leave, user_session}, _from, state) do
     with :ok <- validate_user_joined(user_session, state) do
-      {:reply, :ok, %{state | users: List.delete(state.users, user_session)}}
+      {_,new_state} = {user_session, state}
+      |> remove_user
+      |> transfer_ownership_if_host_left
+
+      if no_more_players?(new_state) do
+        {:stop, {:shutdown, :no_more_players}, :ok, new_state}
+      else
+        {:reply, :ok, new_state}
+      end
     else
       {:error, msg} -> {:reply, {:error, msg}, state}
     end
@@ -84,7 +92,13 @@ defmodule TicketToRide.Game do
   end
 
   def terminate(reason, state) do
-    Logger.info("Game exiting [#{state.id}]: #{reason}")
+    case reason do
+      {:shutdown, :no_more_players} ->
+        Logger.info("Game exiting [#{state.id}]: no more players")
+      _ ->
+        Logger.warn("Game exiting [#{state.id}]: #{reason}")
+    end
+
     Index.remove(state.id)
   end
 
@@ -116,5 +130,25 @@ defmodule TicketToRide.Game do
 
   defp is_joined?(user_session, users) do
     !!Enum.find(users, false, fn user -> user.token == user_session.token end)
+  end
+
+  defp is_host?(user_session, state) do
+    state.owner.token == user_session.token
+  end
+
+  defp no_more_players?(state) do
+    Enum.count(state.users) == 0
+  end
+
+  defp transfer_ownership_if_host_left({user_session, state}) do
+    if is_host?(user_session, state) do
+      {user_session, %{state | owner: List.first(state.users)}}
+    else
+      {user_session, state}
+    end
+  end
+
+  defp remove_user({user_session, state}) do
+    {user_session, %{state | users: List.delete(state.users, user_session)}}
   end
 end

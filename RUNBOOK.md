@@ -31,6 +31,7 @@
 
 ```
 {:ok, :left} = TicketToRide.Client.leave(token_b, game_id)
+{:ok, :left} = TicketToRide.Client.leave(token_a, game_id)
 ```
 
 ## Join first available game

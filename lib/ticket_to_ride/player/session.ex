@@ -1,7 +1,7 @@
 defmodule TicketToRide.Player.Session do
   alias TicketToRide.Player.DB
 
-  defstruct [:name, :token, :expiration]
+  defstruct [:id, :name, :token, :expiration]
 
   def start_link do
     Agent.start_link(fn -> Map.new end, name: __MODULE__)
@@ -41,6 +41,6 @@ defmodule TicketToRide.Player.Session do
   end
 
   defp generate_session(user) do
-    %__MODULE__{name: user.username, token: UUID.uuid1(:hex), expiration: nil}
+    %__MODULE__{id: user.id, name: user.username, token: UUID.uuid1(:hex), expiration: nil}
   end
 end

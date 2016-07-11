@@ -1,3 +1,3 @@
 defmodule TicketToRide.User do
-  defstruct [:username, :pass]
+  defstruct [:id, :username, :pass]
 end

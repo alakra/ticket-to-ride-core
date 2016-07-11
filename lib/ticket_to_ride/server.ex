@@ -73,7 +73,7 @@ defmodule TicketToRide.Server do
   def handle_call({:create, token, options}, _from, state) do
     case Player.Session.get(token) do
       {:ok, user_session} ->
-        opts = Keyword.put(options, :user_session, user_session)
+        opts = Keyword.put(options, :user_id, user_session.id)
         {:reply, Games.create(opts), state}
       other ->
         {:reply, other, state}
@@ -82,14 +82,14 @@ defmodule TicketToRide.Server do
 
   def handle_call({:join, token, game_id}, _from, state) do
     case Player.Session.get(token) do
-      {:ok, user_session} -> join_game(game_id, user_session, state)
+      {:ok, user_session} -> join_game(game_id, user_session.id, state)
       other -> {:reply, other, state}
     end
   end
 
   def handle_call({:leave, token, game_id}, _from, state) do
     case Player.Session.get(token) do
-      {:ok, user_session} -> leave_game(game_id, user_session, state)
+      {:ok, user_session} -> leave_game(game_id, user_session.id, state)
       other -> {:reply, other, state}
     end
   end
@@ -104,8 +104,8 @@ defmodule TicketToRide.Server do
     ip_address
   end
 
-  defp join_game(game_id, user_session, state) do
-    case Games.join(game_id, user_session) do
+  defp join_game(game_id, user_id, state) do
+    case Games.join(game_id, user_id) do
       :ok ->
         {:reply, {:ok, :joined}, state}
       {:error, msg} ->
@@ -113,8 +113,8 @@ defmodule TicketToRide.Server do
     end
   end
 
-  defp leave_game(game_id, user_session, state) do
-    case Games.leave(game_id, user_session) do
+  defp leave_game(game_id, user_id, state) do
+    case Games.leave(game_id, user_id) do
       :ok ->
         {:reply, {:ok, :left}, state}
       {:error, msg} ->

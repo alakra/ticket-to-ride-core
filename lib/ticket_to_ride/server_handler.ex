@@ -14,25 +14,27 @@ defmodule TicketToRide.ServerHandler do
 
   def init(ref, socket, transport, _opts = []) do
     :ok = :ranch.accept_ack(ref)
-    wait_for_data(socket, transport)
+    id = UUID.uuid1(:hex)
+    Logger.info "Connection Opened: #{id}"
+    wait_for_data(socket, transport, id)
   end
 
   # Private
 
-  defp wait_for_data(socket, transport) do
+  defp wait_for_data(socket, transport, id) do
     case transport.recv(socket, 0, @timeout) do
       {:ok, data} ->
-        handle_data(socket, transport, data)
+        handle_data(socket, transport, data, id)
       {:error, :closed} ->
-        Logger.info "Connection Closed:"
+        Logger.info "Connection Closed: #{id}"
         Process.exit(self, :normal)
       {:error, :timeout} ->
-        Logger.info "Connection Timed Out:"
+        Logger.warn "Connection Timed Out: #{id}"
         Process.exit(self, :normal)
     end
   end
 
-  defp handle_data(socket, transport, data) do
+  defp handle_data(socket, transport, data, id) do
     case Msgpax.unpack(data) do
       {:ok, [payload|["\n"]]} ->
         transport.send(socket, payload |> perform |> respond_with)
@@ -42,7 +44,7 @@ defmodule TicketToRide.ServerHandler do
         transport.send(socket, respond_with([:error, "cannot be unpacked"]))
     end
 
-    wait_for_data(socket, transport)
+    wait_for_data(socket, transport, id)
   end
 
   defp respond_with(payload) do
@@ -91,6 +93,13 @@ defmodule TicketToRide.ServerHandler do
   defp perform(["leave", token, game_id]) do
     case Server.leave(token, game_id) do
       {:ok, :left} -> %{ok: "left"}
+      {:error, msg} -> %{error: msg}
+    end
+  end
+
+  defp perform(["begin", token, game_id]) do
+    case Server.begin(token, game_id) do
+      {:ok, :began} -> %{began: game_id}
       {:error, msg} -> %{error: msg}
     end
   end

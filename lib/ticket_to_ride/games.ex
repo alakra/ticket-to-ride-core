@@ -31,16 +31,16 @@ defmodule TicketToRide.Games do
     end
   end
 
-  def join(game_id, user_session) do
+  def join(game_id, user_id) do
     case Index.get(game_id) do
-      {:ok, game} -> Game.join(game, user_session)
+      {:ok, game} -> Game.join(game, user_id)
       :error -> {:error, :not_found}
     end
   end
 
-  def leave(game_id, user_session) do
+  def leave(game_id, user_id) do
     case Index.get(game_id) do
-      {:ok, game} -> Game.leave(game, user_session)
+      {:ok, game} -> Game.leave(game, user_id)
       :error -> {:error, :not_found}
     end
   end
@@ -51,6 +51,13 @@ defmodule TicketToRide.Games do
       {:error, :not_found} ->
         Logger.warn("Tried to destroy game, #{game}, but it doesn't exist.")
         :ok
+    end
+  end
+
+  def begin(game_id, user_id) do
+    case Index.get(game_id) do
+      {:ok, game} -> Game.begin(game, user_id)
+      :error -> {:error, :not_found}
     end
   end
 end

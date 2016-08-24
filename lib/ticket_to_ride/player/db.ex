@@ -7,16 +7,21 @@ defmodule TicketToRide.Player.DB do
     Agent.start_link(fn -> Map.new end, name: __MODULE__)
   end
 
-  def get(username) do
+  def get(:username, username) do
     Agent.get(__MODULE__, &Map.get(&1, username))
   end
 
+  # TODO: Fix with another map that has an index of ids
+  def get(:id, id) do
+    Agent.get(__MODULE__, &Map.find(&1, fn {k,v} -> v.id == id end))
+  end
+
   def register(username, pass) do
-    existing_user = get(username)
+    existing_user = get(:username, username)
 
     case existing_user do
       nil ->
-        Agent.update(__MODULE__, &Map.put(&1, username, %User{username: username, pass: pass}))
+        Agent.update(__MODULE__, &Map.put(&1, username, %User{id: UUID.uuid1(:hex), username: username, pass: pass}))
         :ok
       _ ->
         {:error, "User already registered."}
@@ -24,7 +29,7 @@ defmodule TicketToRide.Player.DB do
   end
 
   def validate(username, pass) do
-    get(username)
+    get(:username, username)
     |> has_valid_record
     |> has_valid_pass(pass)
   end

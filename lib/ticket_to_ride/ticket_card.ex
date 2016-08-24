@@ -43,9 +43,11 @@ defmodule TicketToRide.TicketCard do
   end
 
   defp make_selection(group, player) do
-    Process.group_leader
-    |> IO.gets(prompt(player))
-    |> parse_selection(group, player)
+    # TODO: Move prompt to client and forward through server API
+    #    Process.group_leader
+    #    |> IO.gets(prompt(player))
+    # For now hardcoded to 0 and 1
+    "0,1" |> parse_selection(group, player)
   end
 
   @required_tickets 2

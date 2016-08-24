@@ -26,7 +26,7 @@ defmodule TicketToRide.ServerHandler do
       {:ok, data} ->
         handle_data(socket, transport, data, id)
       {:error, :closed} ->
-        Logger.warn "Connection Closed: #{id}"
+        Logger.info "Connection Closed: #{id}"
         Process.exit(self, :normal)
       {:error, :timeout} ->
         Logger.warn "Connection Timed Out: #{id}"
@@ -93,6 +93,13 @@ defmodule TicketToRide.ServerHandler do
   defp perform(["leave", token, game_id]) do
     case Server.leave(token, game_id) do
       {:ok, :left} -> %{ok: "left"}
+      {:error, msg} -> %{error: msg}
+    end
+  end
+
+  defp perform(["begin", token, game_id]) do
+    case Server.begin(token, game_id) do
+      {:ok, :began} -> %{began: game_id}
       {:error, msg} -> %{error: msg}
     end
   end

@@ -5,6 +5,8 @@ defmodule TicketToRide.Server do
 
   require Logger
 
+  @default_timeout 30_000
+
   # API
 
   def start_link(opts \\ []) do
@@ -12,27 +14,31 @@ defmodule TicketToRide.Server do
   end
 
   def games do
-    GenServer.call(__MODULE__, :games)
+    GenServer.call(__MODULE__, :games, @default_timeout)
   end
 
   def register(user, pass) do
-    GenServer.call(__MODULE__, {:register, user, pass})
+    GenServer.call(__MODULE__, {:register, user, pass}, @default_timeout)
   end
 
   def login(user, pass) do
-    GenServer.call(__MODULE__, {:login, user, pass})
+    GenServer.call(__MODULE__, {:login, user, pass}, @default_timeout)
   end
 
   def create(token, options) do
-    GenServer.call(__MODULE__, {:create, token, options})
+    GenServer.call(__MODULE__, {:create, token, options}, @default_timeout)
   end
 
   def join(token, game_id) do
-    GenServer.call(__MODULE__, {:join, token, game_id})
+    GenServer.call(__MODULE__, {:join, token, game_id}, @default_timeout)
   end
 
   def leave(token, game_id) do
-    GenServer.call(__MODULE__, {:leave, token, game_id})
+    GenServer.call(__MODULE__, {:leave, token, game_id}, @default_timeout)
+  end
+
+  def begin(token, game_id) do
+    GenServer.call(__MODULE__, {:begin, token, game_id}, @default_timeout)
   end
 
   # Callbacks
@@ -94,6 +100,13 @@ defmodule TicketToRide.Server do
     end
   end
 
+  def handle_call({:begin, token, game_id}, _from, state) do
+    case Player.Session.get(token) do
+      {:ok, user_session} -> begin_game(game_id, user_session.id, state)
+      other -> {:reply, other, state}
+    end
+  end
+
   # Private
 
   defp parse_ip(ip) do
@@ -117,6 +130,15 @@ defmodule TicketToRide.Server do
     case Games.leave(game_id, user_id) do
       :ok ->
         {:reply, {:ok, :left}, state}
+      {:error, msg} ->
+        {:reply, {:error, msg}, state}
+    end
+  end
+
+  defp begin_game(game_id, user_id, state) do
+    case Games.begin(game_id, user_id) do
+      :ok ->
+        {:reply, {:ok, :began}, state}
       {:error, msg} ->
         {:reply, {:error, msg}, state}
     end

@@ -3,6 +3,8 @@ defmodule TicketToRide.Client do
 
   require Logger
 
+  @default_timeout 30_000
+
   # API
 
   def start_link(opts \\ []) do
@@ -10,27 +12,35 @@ defmodule TicketToRide.Client do
   end
 
   def list do
-    Connection.call(__MODULE__, :list)
+    Connection.call(__MODULE__, :list, @default_timeout)
   end
 
   def register(user, pass) do
-    Connection.call(__MODULE__, {:register, user, pass})
+    Connection.call(__MODULE__, {:register, user, pass}, @default_timeout)
   end
 
   def login(user, pass) do
-    Connection.call(__MODULE__, {:login, user, pass})
+    Connection.call(__MODULE__, {:login, user, pass}, @default_timeout)
   end
 
   def create(token, options) do
-    Connection.call(__MODULE__, {:create, token, options})
+    Connection.call(__MODULE__, {:create, token, options}, @default_timeout)
   end
 
   def join(token, game_id) do
-    Connection.call(__MODULE__, {:join, token, game_id})
+    Connection.call(__MODULE__, {:join, token, game_id}, @default_timeout)
   end
 
   def leave(token, game_id) do
-    Connection.call(__MODULE__, {:leave, token, game_id})
+    Connection.call(__MODULE__, {:leave, token, game_id}, @default_timeout)
+  end
+
+  def begin(token, game_id) do
+    Connection.call(__MODULE__, {:begin, token, game_id}, @default_timeout)
+  end
+
+  def quit do
+    Connection.stop(__MODULE__, :shutdown)
   end
 
   # Callbacks
@@ -115,9 +125,29 @@ defmodule TicketToRide.Client do
     end
   end
 
+  def handle_call({:begin, token, game_id}, _from, state) do
+    send_msg(state.conn, [:begin, token, game_id])
+
+    case recv_msg(state.conn) do
+      %{"began" => _} -> {:reply, {:ok, :began}, state}
+      %{"error" => msg} -> {:reply, {:error, msg}, state}
+    end
+  end
+
   def terminate(:connection_failed, _) do
     IO.puts "Terminating: Client failed to connect."
     System.halt(1)
+  end
+
+  def terminate(:shutdown, state) do
+    IO.puts "Terminating..."
+
+    case Socket.close(state.conn) do
+      :ok -> IO.puts "Socket closed"
+      {:error, msg} -> IO.puts "Error: #{Kernel.inspect(msg)}"
+    end
+
+    System.halt(0)
   end
 
   # Private

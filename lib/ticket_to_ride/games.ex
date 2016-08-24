@@ -53,4 +53,11 @@ defmodule TicketToRide.Games do
         :ok
     end
   end
+
+  def begin(game_id, user_id) do
+    case Index.get(game_id) do
+      {:ok, game} -> Game.begin(game, user_id)
+      :error -> {:error, :not_found}
+    end
+  end
 end

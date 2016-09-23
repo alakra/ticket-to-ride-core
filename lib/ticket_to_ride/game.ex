@@ -37,7 +37,7 @@ defmodule TicketToRide.Game do
   # Callbacks
 
   def init(opts) do
-    {:ok, machine} = Machine.start_link(owner: opts[:owner_id])
+    {:ok, machine} = Machine.start_link(owner_id: opts[:owner_id])
     {:ok, turns}   = Turns.start_link(machine: machine)
 
     {:ok, %{id: opts[:id], turns: turns, machine: machine}}
@@ -72,17 +72,17 @@ defmodule TicketToRide.Game do
   end
 
   def handle_call({:begin, player_id}, _from, state) do
-    owner   = Machine.get(state.machine, :owner)
-    players = Machine.get(state.machine, :players)
+    owner_id = Machine.get(state.machine, :owner_id)
+    players  = Machine.get(state.machine, :players)
 
-    with true <- owner == player_id do
+    with true <- owner_id == player_id do
       {:ok, _} = Machine.generate(state.machine)
-      Turns.begin(state.turns, players)
+      Turns.begin(state.turns, Enum.map(players, &(&1.id)))
 
       {:reply, :ok, state}
     else
       _ ->
-        Logger.warn("#{player_id} is trying to start a game, but is not the owner (#{owner}) of game ##{state.id}")
+        Logger.warn("#{player_id} is trying to start a game, but is not the owner (#{owner_id}) of game ##{state.id}")
         {:reply, {:error, :cannot_start_game}, state}
     end
   end

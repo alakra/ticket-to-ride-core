@@ -1,6 +1,6 @@
 defmodule TicketToRide.State do
   defstruct [
-    owner: nil,
+    owner_id: nil,
     max_players: nil,
     min_players: nil,
     players: [],
@@ -15,13 +15,13 @@ defmodule TicketToRide.State do
 
   # API
 
-  def new(owner, players) do
+  def new(owner_id, players) do
     {train_deck, players}   = shuffle_and_deal_from_train_deck(players)
     {ticket_deck, players}  = shuffle_and_select_from_ticket_deck(players)
     {displayed, train_deck} = display_trains(train_deck)
 
     {:ok, %__MODULE__{
-      owner: owner,
+      owner_id: owner_id,
       players: players,
       train_deck: train_deck,
       ticket_deck: ticket_deck,

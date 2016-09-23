@@ -1,5 +1,5 @@
 defmodule TicketToRide.Game.Turns do
-  @default_length 40_000
+  @default_length 30_000
   @default_max_retries 2
 
   defstruct [
@@ -8,7 +8,7 @@ defmodule TicketToRide.Game.Turns do
     length: @default_length,
     timer: nil,
     machine: nil,
-    expirations: {},
+    expirations: %{},
     players: [],
     current: nil
   ]
@@ -22,7 +22,7 @@ defmodule TicketToRide.Game.Turns do
   # API
 
   def start_link(opts) do
-    GenServer.start_link(__MODULE__, [opts], [])
+    GenServer.start_link(__MODULE__, opts, [])
   end
 
   def current(pid) do
@@ -68,7 +68,7 @@ defmodule TicketToRide.Game.Turns do
   end
 
   def handle_info({:expired, previous_player}, state) do
-    Logger.warn "Player turn expired for player #{previous_player.id} on game #{state.id}"
+    Logger.warn "Player turn expired for player #{previous_player} on game #{state.id}"
 
     {new_state, new_count} = strike_player(previous_player, state)
     next_player = next_player(previous_player, new_state.players)
@@ -77,6 +77,7 @@ defmodule TicketToRide.Game.Turns do
       new_state = remove_player(previous_player, new_state)
 
       if Enum.count(new_state.players) == 0 do
+        Logger.info("Shutting down game ##{state.id} due to no more players.")
         {:stop, {:shutdown, :not_enough_players}, new_state}
       else
         {:noreply, reset_turn_timer(next_player, new_state)}
@@ -100,19 +101,19 @@ defmodule TicketToRide.Game.Turns do
 
   # Private
 
-  defp next_player(previous_player, state) do
-    next_index = Enum.find_index(state.players, &(&1.id == previous_player.id)) + 1
+  defp next_player(previous_player, players) do
+    next_index = Enum.find_index(players, &(&1 == previous_player)) + 1
 
-    if next_index >= Enum.count(state.players.count)do
-      List.first(state.players)
+    if next_index >= Enum.count(players) do
+      List.first(players)
     else
-      Enum.at(state.players, next_index)
+      Enum.at(players, next_index)
     end
   end
 
   defp remove_player(player, state) do
-    Machine.remove_player(state.machine, player.id)
-    players = Enum.filter(state.players, fn p -> p.id != player.id end)
+    Machine.remove_player(state.machine, player)
+    players = Enum.filter(state.players, fn p -> p != player end)
     %{state | players: players}
   end
 

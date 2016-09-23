@@ -48,7 +48,7 @@ defmodule TicketToRide.Server do
   def init(args) do
     Logger.info "Starting server on tcp://#{args[:ip]}:#{args[:port]} (max connections: #{args[:limit]})"
 
-    {:ok, listener} = :ranch.start_listener(TicketToRide, @acceptors, :ranch_tcp,
+    {:ok, listener} = :ranch.start_listener(TicketToRide.Listener, @acceptors, :ranch_tcp,
       [ip: parse_ip(args[:ip]), port: args[:port], max_connections: args[:limit]],
       ServerHandler, [])
 
@@ -72,14 +72,14 @@ defmodule TicketToRide.Server do
   def handle_call({:login, user, pass}, _from, state) do
     case Player.Session.new(user, pass) do
       {:ok, session} -> {:reply, {:ok, session.token}, state}
-      {:error, msg} -> {:reply, {:error, msg}, state}
+      {:error, msg}  -> {:reply, {:error, msg}, state}
     end
   end
 
   def handle_call({:create, token, options}, _from, state) do
     case Player.Session.get(token) do
       {:ok, user_session} ->
-        opts = Keyword.put(options, :user_id, user_session.id)
+        opts = Keyword.put(options, :owner_id, user_session.id)
         {:reply, Games.create(opts), state}
       other ->
         {:reply, other, state}

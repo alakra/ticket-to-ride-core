@@ -13,7 +13,7 @@ defmodule TicketToRide.Player.DB do
 
   # TODO: Fix with another map that has an index of ids
   def get(:id, id) do
-    Agent.get(__MODULE__, &Map.find(&1, fn {k,v} -> v.id == id end))
+    Agent.get(__MODULE__, &Enum.find(&1, fn {_,v} -> v.id == id end))
   end
 
   def register(username, pass) do

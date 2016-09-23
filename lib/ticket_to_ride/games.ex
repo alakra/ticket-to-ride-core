@@ -2,7 +2,7 @@ defmodule TicketToRide.Games do
   use Supervisor
 
   alias TicketToRide.Game
-  alias TicketToRide.Games.Index
+  alias TicketToRide.Game.Index
 
   require Logger
 
@@ -11,6 +11,8 @@ defmodule TicketToRide.Games do
   def start_link do
     Supervisor.start_link(__MODULE__, [], [name: __MODULE__])
   end
+
+  # Callbacks
 
   def init(_args) do
     children = [
@@ -21,26 +23,40 @@ defmodule TicketToRide.Games do
   end
 
   def list do
-    {:ok, Index.all |> Map.keys}
+    {:ok, Index.all(:ids)}
   end
 
   def create(options) do
-    case Supervisor.start_child(__MODULE__, [options]) do
-      {:ok, game} -> {:ok, Game.id(game) |> Index.put(game)}
+    id = UUID.uuid1(:hex)
+    opts = Keyword.put(options, :id, id)
+
+    case Supervisor.start_child(__MODULE__, [opts]) do
+      {:ok, game} -> {:ok, Index.put(id, game, %{})}
       {:error, error} -> {:error, error}
+    end
+  end
+
+  def begin(game_id, owner_id) do
+    # TODO: Do check for games that have already been started
+    case Index.get(game_id) do
+      {:ok, {_, game, _}} ->
+        Logger.info("Game starting #{game_id}")
+        Game.begin(game, owner_id)
+      :error ->
+        {:error, :not_found}
     end
   end
 
   def join(game_id, user_id) do
     case Index.get(game_id) do
-      {:ok, game} -> Game.join(game, user_id)
+      {:ok, {_, game, _}} -> Game.join(game, user_id)
       :error -> {:error, :not_found}
     end
   end
 
   def leave(game_id, user_id) do
     case Index.get(game_id) do
-      {:ok, game} -> Game.leave(game, user_id)
+      {:ok, {_, game, _}} -> Game.leave(game, user_id)
       :error -> {:error, :not_found}
     end
   end
@@ -51,13 +67,6 @@ defmodule TicketToRide.Games do
       {:error, :not_found} ->
         Logger.warn("Tried to destroy game, #{game}, but it doesn't exist.")
         :ok
-    end
-  end
-
-  def begin(game_id, user_id) do
-    case Index.get(game_id) do
-      {:ok, game} -> Game.begin(game, user_id)
-      :error -> {:error, :not_found}
     end
   end
 end

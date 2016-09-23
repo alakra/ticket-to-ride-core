@@ -1,23 +1,12 @@
 defmodule TicketToRide.Game do
-  defstruct [
-    :id,
-    :owner,
-    :turn_length,
-    :turn_timer_ref,
-    :turn_expiration_track,
-    :users,
-    :gamestate,
-    :max_players
-  ]
-
   use GenServer
 
-  alias TicketToRide.State
-  alias TicketToRide.Games.Index
+  alias TicketToRide.Game.{Index, Machine, Turns}
 
   require Logger
 
   @default_timeout 30_000
+  @max_players 4
 
   # API
 
@@ -25,143 +14,103 @@ defmodule TicketToRide.Game do
     GenServer.start_link(__MODULE__, opts, [])
   end
 
-  def id(game) do
-    GenServer.call(game, :id, @default_timeout)
+  def begin(game, player_id) do
+    GenServer.call(game, {:begin, player_id}, @default_timeout)
   end
 
-  def status(game) do
-    GenServer.call(game, :status, @default_timeout)
+  def join(game, player_id) do
+    GenServer.call(game, {:join, player_id}, @default_timeout)
   end
 
-  def begin(game, user_id) do
-    GenServer.call(game, {:begin, user_id}, @default_timeout)
+  def leave(game, player_id) do
+    GenServer.call(game, {:leave, player_id}, @default_timeout)
   end
 
-  def join(game, user_id) do
-    GenServer.call(game, {:join, user_id}, @default_timeout)
+  def finish(game, player_id) do
+    GenServer.call(game, {:finish, player_id}, @default_timeout)
   end
 
-  def leave(game, user_id) do
-    GenServer.call(game, {:leave, user_id}, @default_timeout)
-  end
-
-  def action(game, user_id, payload) do
-    GenServer.call(game, {:action, user_id, payload}, @default_timeout)
+  def action(game, player_id, payload) do
+    GenServer.call(game, {:action, player_id, payload}, @default_timeout)
   end
 
   # Callbacks
 
-  @default_max_players 4
-  @default_min_players 2
-  @default_turn_length 40_000
-  @default_turn_retry_max 2
-
   def init(opts) do
-    {:ok, %__MODULE__{
-        id: UUID.uuid1(:hex),
-        owner: opts[:user_id],
-        users: [opts[:user_id]],
-        turn_length: opts[:turn_length] || @default_turn_length,
-        turn_timer_ref: nil,
-        turn_expiration_track: %{},
-        max_players: opts[:max] || @default_max_players,
-        gamestate: nil}
-    }
+    {:ok, machine} = Machine.start_link(owner_id: opts[:owner_id])
+    {:ok, turns}   = Turns.start_link(machine: machine)
+
+    {:ok, %{id: opts[:id], turns: turns, machine: machine}}
   end
 
-  def handle_call(:id, _from, state) do
-    {:reply, state.id, state}
-  end
+  def handle_call({:join, player_id}, _from, %{machine: machine} = state) do
+    players = Machine.get(machine, :players)
 
-  def handle_call(:status, _from, state) do
-    # TBD
-  end
-
-  def handle_call({:join, user_id}, _from, state) do
-    with :ok <- validate_not_full(state),
-         :ok <- validate_no_duplicate_players(user_id, state) do
-      {:reply, :ok, %{state | users: [user_id|state.users]}}
+    with :ok <- validate_not_full(players),
+         :ok <- validate_no_duplicate_players(players, player_id) do
+      Machine.add_player(machine, player_id)
+      {:reply, :ok, state}
     else
       {:error, msg} -> {:reply, {:error, msg}, state}
     end
   end
 
-  def handle_call({:leave, user_id}, _from, state) do
-    with :ok <- validate_user_joined(user_id, state) do
-      {_,new_state} = {user_id, state}
-      |> remove_user
-      |> transfer_ownership_if_host_left
+  def handle_call({:leave, player_id}, _from, %{machine: machine} = state) do
+    players = Machine.get(machine, :players)
 
-      if no_more_players?(new_state) do
-        {:stop, {:shutdown, :not_enough_players}, :ok, new_state}
+    with :ok <- validate_player_joined(players, player_id) do
+      Machine.remove_player(machine, player_id)
+
+      if Machine.get(machine, :players) |> no_more_players? do
+        {:stop, {:shutdown, :not_enough_players}, :ok, state}
       else
-        {:reply, :ok, new_state}
+        {:reply, :ok, state}
       end
     else
       {:error, msg} -> {:reply, {:error, msg}, state}
     end
   end
 
-  def handle_call({:begin, user_id}, _from, state) do
-    with true <- is_host?(user_id, state) do
-      Logger.info("Game starting #{state.id}")
+  def handle_call({:begin, player_id}, _from, state) do
+    owner_id = Machine.get(state.machine, :owner_id)
+    players  = Machine.get(state.machine, :players)
 
-      new_gamestate = State.new(state.users)
-      timer_ref     = trigger_turn_timer(new_gamestate, state.turn_length)
-      items         = [gamestate: new_gamestate, turn_timer_ref: timer_ref]
+    with true <- owner_id == player_id do
+      {:ok, _} = Machine.generate(state.machine)
+      Turns.begin(state.turns, Enum.map(players, &(&1.id)))
 
-      {:reply, :ok, merge_onto_state(state, items)}
+      {:reply, :ok, state}
     else
-      {:error, msg} -> {:reply, {:error, msg}, state}
+      _ ->
+        Logger.warn("#{player_id} is trying to start a game, but is not the owner (#{owner_id}) of game ##{state.id}")
+        {:reply, {:error, :cannot_start_game}, state}
     end
   end
 
-  def handle_call({:action, user_id, payload}, _from, state) do
-    if user_id == state.gamestate.turn do
-      new_state = state |> reset_turn_timer
+  def handle_call({:action, player_id, payload}, _from, state) do
+    current_player = Turns.current(state.turns)
 
+    if player_id == current_player.id do
       # ...
       # TODO: action dispatch
       # ...
-
-      {:reply, :ok, new_state}
     else
-      {:reply, :ok, state}
+      Logger.warn("Ignoring player #{player_id} because it's not his turn.")
     end
+
+    {:reply, :ok, state}
   end
 
-  def handle_info({:turn_expired, id}, state) do
-    count = Map.get(state.turn_expiration_track, id)
-    new_count = if count, do: count + 1, else: 1
-    track = state.turn_expiration_track
-    new_state = %{state | turn_expiration_track: Map.put(track, id, new_count)}
+  def handle_call({:finish, player_id}, _from, state) do
+    current_player = Turns.current(state.turns)
 
-    if new_count > 2 do
-      Logger.warn "Player turn expired for player #{id} on game #{state.id}"
-
-      {_,new_state} = {id, new_state}
-      |> remove_user
-      |> transfer_ownership_if_host_left
-
-      if no_more_players?(new_state) do
-        {:stop, {:shutdown, :not_enough_players}, new_state}
-      else
-        {:noreply, reset_turn_timer(new_state)}
-      end
+    if player_id == current_player.id do
+      Turns.finish(state.turns)
     else
-      {:noreply, reset_turn_timer(new_state)}
+      Logger.warn("Ignoring player #{player_id} because it's not his turn.")
     end
-  end
 
-  def handle_info({:next_turn, id}, state) do
-    new_gamestate = State.move_to_next_turn(state.gamestate, id)
-
-    Logger.info "Next turn started for player #{new_gamestate.turn} on game #{state.id}"
-
-    timer_ref = trigger_turn_timer(new_gamestate, state.turn_length)
-    items     = [gamestate: new_gamestate, turn_timer_ref: timer_ref]
-
-    {:noreply, merge_onto_state(state, items)}
+    {:reply, :ok, state}
   end
 
   def terminate(reason, state) do
@@ -175,53 +124,26 @@ defmodule TicketToRide.Game do
     Index.remove(state.id)
   end
 
-  # Private
-
-  ### Turns helpers
-
-  defp merge_onto_state(state, opts \\ []) do
-    Enum.reduce(opts, state, fn ({k,v}, acc) -> Map.put(acc, k, v) end)
-  end
-
-  defp trigger_turn_timer(gamestate, turn_length) do
-    Process.send_after(self(), {:turn_expired, gamestate.turn}, turn_length)
-  end
-
-  defp reset_turn_timer(state) do
-    Process.cancel_timer(state.turn_timer_ref)
-    Process.send(self(), {:next_turn, state.gamestate.turn}, [:noconnect])
-
-    %{state | turn_timer_ref: nil}
-  end
-
   ### Validations
 
-  defp validate_enough_players(state) do
-    if Enum.count(state.users) < state.min_players do
-      {:error, :not_enough_players}
-    else
-      :ok
-    end
-  end
-
-  defp validate_not_full(state) do
-    if Enum.count(state.users) <= state.max_players do
+  defp validate_not_full(players) do
+    if Enum.count(players) <= @max_players do
       :ok
     else
       {:error, :full}
     end
   end
 
-  defp validate_no_duplicate_players(user_id, state) do
-    if is_joined?(user_id, state.users) do
+  defp validate_no_duplicate_players(players, player_id) do
+    if is_joined?(players, player_id) do
       {:error, :already_joined}
     else
       :ok
     end
   end
 
-  defp validate_user_joined(user_id, state) do
-    if is_joined?(user_id, state.users)do
+  defp validate_player_joined(players, player_id) do
+    if is_joined?(players, player_id)do
       :ok
     else
       {:error, :not_joined}
@@ -230,38 +152,11 @@ defmodule TicketToRide.Game do
 
   ### Conditional Helpers
 
-  defp is_joined?(user_id, users) do
-    !!Enum.find(users, false, fn stored_id -> stored_id == user_id end)
+  defp is_joined?(players, player_id) do
+    Enum.any?(players, fn stored_id -> stored_id == player_id end)
   end
 
-  defp is_host?(user_id, state) do
-    state.owner == user_id
-  end
-
-  defp no_more_players?(state) do
-    Enum.count(state.users) == 0
-  end
-
-  ### Utility Helpers
-
-  defp transfer_ownership_if_host_left({user_id, state}) do
-    if is_host?(user_id, state) do
-      {user_id, %{state | owner: List.first(state.users)}}
-    else
-      {user_id, state}
-    end
-  end
-
-  defp remove_user({user_id, state}) do
-    players = state.gamestate.players
-    index = Enum.find_index(players, &(&1.id == user_id))
-    new_players = List.delete(players, index)
-    new_gamestate = Map.put(state.gamestate, :players, new_players)
-
-    new_state = state
-    |> Map.put(:users, List.delete(state.users, user_id))
-    |> Map.put(:gamestate, new_gamestate)
-
-    {user_id, new_state}
+  defp no_more_players?(players) do
+    Enum.count(players) == 0
   end
 end

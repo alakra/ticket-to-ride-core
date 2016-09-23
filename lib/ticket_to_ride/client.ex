@@ -40,7 +40,7 @@ defmodule TicketToRide.Client do
   end
 
   def quit do
-    Connection.stop(__MODULE__, :shutdown)
+    GenServer.stop(__MODULE__, :shutdown)
   end
 
   # Callbacks
@@ -74,9 +74,12 @@ defmodule TicketToRide.Client do
   def handle_call(:list, _from, state) do
     send_msg(state.conn, [:list])
 
-   case recv_msg(state.conn) do
-     list -> {:reply, {:ok, list}, state}
-     %{"error" => msg} -> {:reply, {:ok, []}, state}
+    case recv_msg(state.conn) do
+     %{"error" => msg} ->
+       Logger.warn "Error retrieving game list from remote server: #{Kernel.inspect(msg)}"
+       {:reply, {:ok, []}, state}
+     list ->
+       {:reply, {:ok, list}, state}
    end
   end
 
@@ -93,8 +96,8 @@ defmodule TicketToRide.Client do
     send_msg(state.conn, [:login, user, pass])
 
     case recv_msg(state.conn) do
-      token -> {:reply, {:ok, token}, state}
       %{"error" => msg} -> {:reply, {:error, msg}, state}
+      token -> {:reply, {:ok, token}, state}
     end
   end
 
@@ -102,8 +105,8 @@ defmodule TicketToRide.Client do
     send_msg(state.conn, [:create, token, options])
 
     case recv_msg(state.conn) do
-      game_id -> {:reply, {:ok, game_id}, state}
       %{"error" => msg} -> {:reply, {:error, msg}, state}
+      game_id -> {:reply, {:ok, game_id}, state}
     end
   end
 

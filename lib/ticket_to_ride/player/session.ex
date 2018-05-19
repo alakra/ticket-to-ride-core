@@ -9,12 +9,12 @@ defmodule TicketToRide.Player.Session do
 
   def new(username, pass) do
     case DB.validate(username, pass) do
+      {:error, msg} ->
+        {:error, msg}
       user ->
         user
         |> generate_session
         |> store_session
-      {:error, msg} ->
-        {:error, msg}
     end
   end
 
@@ -24,7 +24,7 @@ defmodule TicketToRide.Player.Session do
     end)
 
     case session do
-      {token, session} -> {:ok, session}
+      {_token, session} -> {:ok, session}
       nil -> {:error, :not_found}
     end
   end

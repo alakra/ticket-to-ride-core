@@ -1,7 +1,7 @@
 defmodule TicketToRide.Server do
   use GenServer
 
-  alias TicketToRide.{ServerHandler, Player, Games, Game}
+  alias TicketToRide.{ServerHandler, Player, Games}
 
   require Logger
 
@@ -111,7 +111,7 @@ defmodule TicketToRide.Server do
 
   defp parse_ip(ip) do
     {:ok, ip_address} = ip
-    |> String.to_char_list
+    |> String.to_charlist
     |> :inet.parse_address
 
     ip_address

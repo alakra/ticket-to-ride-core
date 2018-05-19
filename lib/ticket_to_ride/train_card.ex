@@ -1,5 +1,4 @@
 defmodule TicketToRide.TrainCard do
-  alias TicketToRide.Player
 
   # API
 

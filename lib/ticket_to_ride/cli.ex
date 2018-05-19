@@ -77,6 +77,6 @@ defmodule TicketToRide.CLI do
   end
 
   defp interpret_options({options, _, _}) do
-    Keyword.merge(default_options, options)
+    Keyword.merge(default_options(), options)
   end
 end

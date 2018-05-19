@@ -58,7 +58,7 @@ defmodule TicketToRide.Router do
 
   # Private
 
-  defp get(origins, name, opts \\ [autocreate: false]) do
+  defp get(origins, name, opts) do
     case Map.fetch(origins, name) do
       {:ok, origin} -> origin
       :error -> get_on_error(name, opts[:autocreate])

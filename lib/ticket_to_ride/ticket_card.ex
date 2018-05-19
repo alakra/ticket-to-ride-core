@@ -1,7 +1,6 @@
 defmodule TicketToRide.TicketCard do
   alias TicketToRide.{
     Tickets,
-    Player,
     InsufficientTicketSelectionError
   }
 
@@ -12,7 +11,7 @@ defmodule TicketToRide.TicketCard do
   end
 
   def select_hands(deck, players) do
-    {ticket_groups, remainder} = split_tickets_into_groups(deck, players)
+    {ticket_groups, _remainder} = split_tickets_into_groups(deck, players)
 
     {rejects, players} = Enum.zip(ticket_groups, players)
     |> gather_selections
@@ -55,7 +54,7 @@ defmodule TicketToRide.TicketCard do
     try do
       selections = input
       |> String.split(",")
-      |> Enum.map(&(String.strip(&1)))
+      |> Enum.map(&(String.trim(&1)))
       |> Enum.map(&(String.to_integer(&1)))
       |> Enum.uniq
       |> Enum.map(&(Enum.at(group, &1)))

@@ -5,17 +5,17 @@ defmodule Mix.TicketToRide do
   end
 
   def options(:client, args) do
-    args |> general_options
+    general_options(args)
   end
 
   def run_args do
-    if iex_running?, do: [], else: ["--no-halt"]
+    if iex_running?(), do: [], else: ["--no-halt"]
   end
 
   # Private
 
   defp general_options(args) do
-    args |> TicketToRide.CLI.parse_options
+    TicketToRide.CLI.parse_options(args)
   end
 
   defp iex_running? do

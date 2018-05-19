@@ -11,7 +11,7 @@ defmodule TicketToRide.State do
     discard_deck: []
   ]
 
-  alias TicketToRide.{Player, TrainCard, TicketCard}
+  alias TicketToRide.{TrainCard, TicketCard}
 
   # API
 

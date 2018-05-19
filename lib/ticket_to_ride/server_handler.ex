@@ -27,10 +27,10 @@ defmodule TicketToRide.ServerHandler do
         handle_data(socket, transport, data, id)
       {:error, :closed} ->
         Logger.info "Connection Closed: #{id}"
-        Process.exit(self, :normal)
+        Process.exit(self(), :normal)
       {:error, :timeout} ->
         Logger.warn "Connection Timed Out: #{id}"
-        Process.exit(self, :normal)
+        Process.exit(self(), :normal)
     end
   end
 

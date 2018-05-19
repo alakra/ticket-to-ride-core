@@ -3,8 +3,9 @@
 ## Summary
 
 This is an implementation of Ticket to Ride (the Amercian version) in
-Elixir.  It contains a multiplayer game server and a command-line
-based client.
+Elixir. It contains a multiplayer game server and a command-line based
+client. There is no single player available at this time so every
+client connected must be orchestrated by a human.
 
 ## Features
 
@@ -12,21 +13,80 @@ based client.
 
 Two environments are currently supported: `local`, `otp release` and `docker`.
 
-### Installing locally
+### Local
 
-#### Prerequisites
+#### Requirements
 
-### Installing with an OTP release
+* You must have `elixir` >= `1.6` with `mix` installed
+* You must have `git` installed
 
-### Installing in a Docker container
+#### Installation
+
+1. Clone the repo:
+
+```shell
+git clone https://github.com/alakra/ticket-to-ride-core.git
+```
+
+2. Change to the cloned directory and install dependencies:
+
+```shell
+cd ticket-to-ride-core
+mix deps.get
+```
+
+3. Compile the application:
+
+```shell
+mix compile
+```
+
+You should now be ready to [play a game](#playing-a-game). If it doesn't work,
+please [submit an issue](https://github.com/alakra/ticket-to-ride-core/issues).
+
+### OTP Release
+
+### Docker
 
 ## Playing a Game
 
+In order to play game, you must first start a server then connect
+clients to it to start or join a game.
+
 ### Running a Server
 
-#### Starting a Game
+Running a server is different depending on the environment used.
 
-### Joining with a Client
+#### Locally
+
+You can start a server locally by running a mix task:
+
+```shell
+mix run ttr.server
+```
+
+This will start the server with default options:
+
+| Description                | Short | Long     | Default Value |
+|----------------------------+-------+----------+---------------|
+| IP of server               | -i    | --ip     |     127.0.0.1 |
+| Port of server             | -p    | --port   |          7777 |
+| Max Connections            | -l    | --limit  |          1000 |
+| Flag for server (no value) | -s    | --server |               |
+
+You should then see the server start:
+
+```text
+[2018-05-19T22:14:34.032Z][info] Starting server on tcp://127.0.0.1:7777 (max connections: 1000)
+```
+
+#### OTP Release
+
+#### Docker
+
+### Starting a Game as a Client
+
+### Joining a Game as a Client
 
 ## Why?
 

@@ -33,14 +33,12 @@ Two environments are currently supported: `local`, `otp release` and `docker`.
 ### Primary Goals
 
 I wrote this implementation of TTR so that I could experiment with
-`ranch`, `msgpack` and terminal-based interactions within Elixir.
-
-I wanted to see how well DSLs could be written with Elixir's macro
-system when defining static characteristics of a turn-based game.
-
-In TTR's case, I was able to write macros that helped me define the
-graph of train routes and vathe lues of the playing cards in a very
-readable way.
+`ranch`, `msgpack` and terminal-based interactions within Elixir. I
+wanted to see how well DSLs could be written with Elixir's macro
+system when defining static characteristics of a turn-based game. In
+TTR's case, I was able to write macros that helped me define the graph
+of train routes and vathe lues of the playing cards in a very readable
+way.
 
 See [TicketToRide.Routes](lib/ticket_to_ride/routes.ex) and [TicketToRide.Tickets](lib/ticket_to_ride/tickets.ex) as
 examples.

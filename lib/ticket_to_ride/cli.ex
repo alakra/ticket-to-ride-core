@@ -58,9 +58,9 @@ defmodule TicketToRide.CLI do
     Kernel.exit(:normal)
   end
 
-  defp interpret_options({[help: true], _, _}) do
+  defp interpret_options({[server: true, help: true], _, _}) do
     IO.puts """
-    description: Ticket to Ride Game Client/Server
+    description: Ticket to Ride Game Server
 
     options:
     -h, --help        Show this help message.
@@ -68,9 +68,22 @@ defmodule TicketToRide.CLI do
 
     -p, --port        Port to connect to for client or server. (Default: #{@default_port})
     -i, --ip          IP to bind server to or server to connect to as a client. (Default: #{@default_ip})
-
-    -s, --server      Run as a server. (without this option, always run as client)
     -l, --limit       Limit games that can be played concurrently (Default: #{@default_game_limit})
+    """
+
+    Kernel.exit(:normal)
+  end
+
+  defp interpret_options({[help: true], _, _}) do
+    IO.puts """
+    description: Ticket to Ride Game Client
+
+    options:
+    -h, --help        Show this help message.
+    -v, --version     Show version.
+
+    -p, --port        Port to connect to for client or server. (Default: #{@default_port})
+    -i, --ip          IP to bind server to or server to connect to as a client. (Default: #{@default_ip})
     """
 
     Kernel.exit(:normal)

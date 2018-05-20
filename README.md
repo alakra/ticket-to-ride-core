@@ -22,20 +22,20 @@ Two environments are currently supported: `local`, `otp release` and `docker`.
 
 #### Installation
 
-1. Clone the repo:
+Clone the repo:
 
 ```shell
 git clone https://github.com/alakra/ticket-to-ride-core.git
 ```
 
-2. Change to the cloned directory and install dependencies:
+Change to the cloned directory and install dependencies:
 
 ```shell
 cd ticket-to-ride-core
 mix deps.get
 ```
 
-3. Compile the application:
+Compile the application:
 
 ```shell
 mix compile
@@ -116,3 +116,7 @@ quality of service degraded.
 ### OTP Architecture
 
 ### Networking Protocol Details
+
+## License
+
+This software is licensed under the [MIT License](LICENSE).

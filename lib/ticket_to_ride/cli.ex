@@ -47,7 +47,7 @@ defmodule TicketToRide.CLI do
 
   defp interpret_options({[], _, _}) do
     IO.puts """
-    usage: ticket_to_ride [-hv] [-p PORT] [-i ADDRESS] [-s] [-l LIMIT]
+    usage: mix ttr.client [-hv] [-p PORT] [-i ADDRESS]
     """
 
     Kernel.exit(:normal)

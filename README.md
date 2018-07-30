@@ -3,7 +3,7 @@
 ## Summary
 
 This is an implementation of Ticket to Ride (the Amercian version) in
-Elixir. It contains a multiplayer game server and a command-line based
+Elixir. It contains a multiplayer game server and a terminal based
 client. There is no single player available at this time so every
 client connected must be orchestrated by a human.
 
@@ -11,14 +11,13 @@ client connected must be orchestrated by a human.
 
 ## Installation and Setup
 
-Two environments are currently supported: `local`, `otp release` and `docker`.
-
-### Local
+Platforms currently supported are MacOS and Linux.
 
 #### Requirements
 
 * You must have `elixir` >= `1.6` with `mix` installed
 * You must have `git` installed
+* You must have `ncurses` library support installed on your system.
 
 #### Installation
 
@@ -62,7 +61,7 @@ Running a server is different depending on the environment used.
 You can start a server locally by running a mix task:
 
 ```shell
-mix run ttr.server
+mix ttr.server
 ```
 
 This will start the server with default options:

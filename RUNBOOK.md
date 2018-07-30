@@ -1,3 +1,23 @@
+# Core Usage (after application startup)
+
+:ok = TtrCore.Player.DB.register("playerA", "p@ssw0rd!")
+{:ok, sessionA} = TtrCore.Player.Session.new("playerA", "p@ssw0rd!")
+
+:ok = TtrCore.Player.DB.register("playerB", "p@ssw0rd!")
+{:ok, sessionB} = TtrCore.Player.Session.new("playerB", "p@ssw0rd!")
+
+{:ok, id, pid} = TtrCore.Games.create(sessionA.user_id)
+{:ok, ids} = TtrCore.Games.list()
+
+:ok = TtrCore.Games.join(id, sessionB.user_id)
+
+:ok = TtrCore.Games.begin(id, sessionA.user_id)
+
+:ok = TtrCore.Games.leave(id, sessionB.user_id)
+:ok = TtrCore.Games.leave(id, sessionA.user_id)
+
+
+
 # Quick and Dirty
 
 ```

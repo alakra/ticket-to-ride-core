@@ -75,7 +75,7 @@ defmodule TtrCore.Games.Ticker do
 
   # Private
 
-  def get_next_count(count) do
+  defp get_next_count(count) do
     if count >= (@max_ticks - 1) do
       0
     else
@@ -83,7 +83,7 @@ defmodule TtrCore.Games.Ticker do
     end
   end
 
-  def get_next_start_count(count) do
+  defp get_next_start_count(count) do
     new_count = count + 10
 
     if new_count > (@max_ticks - 1) do

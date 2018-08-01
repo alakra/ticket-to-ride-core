@@ -18,7 +18,10 @@ defmodule TtrCore.Cards.TrainCard do
   def shuffle([], deck), do: deck
   def shuffle(source, deck) do
     [{train, n}] = Enum.take_random(source, 1)
-    calc_remainder(source, train, n) |> shuffle(deck ++ [train])
+
+    source
+    |> calc_remainder(train, n)
+    |> shuffle([train|deck])
   end
 
   @hand_size 4

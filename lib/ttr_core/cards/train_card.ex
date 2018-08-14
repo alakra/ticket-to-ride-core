@@ -1,6 +1,5 @@
 defmodule TtrCore.Cards.TrainCard do
-
-  # API
+  @moduledoc false
 
   @car_counts [
     box: 12,       # yellow
@@ -14,34 +13,43 @@ defmodule TtrCore.Cards.TrainCard do
     locomotive: 14 # gold
   ]
 
+  @type t :: :box
+  | :passenger
+  | :tanker
+  | :reefer
+  | :freight
+  | :hopper
+  | :coal
+  | :caboose
+  | :locomotive
+
+  @type deck :: [t]
+  @type remaining :: deck()
+  @type selected :: deck()
+
+  # API
+
   def shuffle, do: shuffle(@car_counts, [])
   def shuffle([], deck), do: deck
   def shuffle(source, deck) do
     [{train, n}] = Enum.take_random(source, 1)
 
     source
-    |> calc_remainder(train, n)
+    |> calculate_remainder(train, n)
     |> shuffle([train|deck])
   end
 
-  @hand_size 4
-
-  def deal_hands(deck, players), do: deal_hands(deck, players, @hand_size)
-  def deal_hands(deck, players, 0), do: {deck, players}
-  def deal_hands(deck, players, count) do
-    {handout, deck} = Enum.split(deck, Enum.count(players))
-    players = add_trains_to_players(handout, players)
-    deal_hands(deck, players, count - 1)
-  end
+  @spec draw(deck(), integer()) ::
+  {:ok, {remaining(), selected()}} |
+  {:error, :invalid_deal}
+  def draw(deck, n)
+  def draw(deck, 4), do: {:ok, Enum.split(deck, 4)}
+  def draw(deck, 2), do: {:ok, Enum.split(deck, 2)}
+  def draw(deck, 1), do: {:ok, Enum.split(deck, 1)}
+  def draw(deck, _), do: {:error, :invalid_deal}
 
   # Private
 
-  defp calc_remainder(source, train, 0), do: Keyword.delete(source, train)
-  defp calc_remainder(source, train, n), do: Keyword.put(source, train, n - 1)
-
-  defp add_trains_to_players(handout, players) do
-    Enum.zip(handout, players) |> Enum.map(fn {card, player} ->
-      %{player | trains: player.trains ++ [card]}
-    end)
-  end
+  defp calculate_remainder(source, train, 1), do: Keyword.delete(source, train)
+  defp calculate_remainder(source, train, n), do: Keyword.put(source, train, n - 1)
 end

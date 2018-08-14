@@ -1,19 +1,17 @@
 defmodule TtrCore.Games.Action do
-  @type command() ::
-  :claim_route
+  alias TtrCore.Board.Route
+  alias TtrCore.Cards.{
+    TrainCard,
+    TicketCard
+  }
+
+  @type count() :: integer()
+
+  @type t :: {:claim_route, Route.t}
+  | {:draw_train_cards, count()}
+  | {:draw_ticket_cards, count()}
+  | {:select_train_cards, [TrainCard.t]}
+  | {:select_ticket_cards, [TicketCard.t]}
   | :end_turn
-  | :draw_faceup_train_cards
-  | :draw_deck_train_cards
-  | :draw_ticket_cards
   | :force_end_turn
-  | :select_initial_destination_cards
-  | :select_destination_cards
-
-  @type details() ::
-  :no_details
-
-  @type player_id() :: binary()
-
-  @type t ::
-  command() | {command(), details()}
 end

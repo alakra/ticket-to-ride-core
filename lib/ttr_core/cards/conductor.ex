@@ -1,4 +1,6 @@
 defmodule TtrCore.Cards.Conductor do
+  @moduledoc false
+
   alias TtrCore.Board.Routes
   alias TtrCore.{
     NoTicketFoundError,
@@ -13,6 +15,7 @@ defmodule TtrCore.Cards.Conductor do
       value: 0
     ]
   end
+
 
   defmacro __using__(_opts) do
     quote do

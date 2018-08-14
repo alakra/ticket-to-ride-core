@@ -19,7 +19,7 @@ defmodule TtrCore.Mixfile do
   # Private
 
   defp aliases do
-    [test: "test --no-start"]
+    [test: "test --no-start --max-cases 1"]
   end
 
   defp deps do
@@ -29,7 +29,8 @@ defmodule TtrCore.Mixfile do
       {:uuid, "~> 1.1"},
 
       # Development
-      {:ex_doc, "~> 0.18.0", only: :dev, runtime: false}
+      {:dialyzex, "~> 1.1.0", only: :dev},
+      {:ex_doc, "~> 0.18.0", only: :dev, runtime: false},
     ]
   end
 end

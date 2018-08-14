@@ -3,7 +3,7 @@ defmodule TtrCore.Games.Game do
   A `GenServer` process that manages the process tree of a single
   game and handles joining, beginning, leaving, and finishing a game.
 
-  It forwards all other game actions onto `TtrCore.Game.Machine` and
+  It forwards all other game actions onto `TtrCore.Game.State` and
   `TtrCore.Game.Turns`.
 
   ## Notes
@@ -15,9 +15,8 @@ defmodule TtrCore.Games.Game do
   use GenServer
 
   alias TtrCore.Games.{
+    Action,
     Index,
-    Machine,
-    Options,
     State,
     Ticker,
     Turns
@@ -37,25 +36,25 @@ defmodule TtrCore.Games.Game do
   @doc """
   Starts the `TtrCore.Game` process.
   """
-  @spec start_link(Options.t) :: {:ok, pid()}
-  def start_link(%Options{id: id} = opts) do
+  @spec start_link(State.t) :: {:ok, pid()}
+  def start_link(%State{id: id} = state) do
     name = {:via, Registry, {Index, id}}
-    GenServer.start_link(__MODULE__, opts, name: name)
+    GenServer.start_link(__MODULE__, state, name: name)
   end
 
   @doc """
   Specifies `TtrCore.Game` to run as a worker.
   """
-  @spec child_spec(Options.t) :: Supervisor.child_spec()
-  def child_spec(opts) do
+  @spec child_spec(State.t) :: Supervisor.child_spec()
+  def child_spec(state) do
     %{id: __MODULE__,
-      start: {__MODULE__, :start_link, [opts]},
+      start: {__MODULE__, :start_link, [state]},
       restart: :transient,
       type: :worker}
   end
 
   @doc """
-  Begins a game.
+  Setups a game.
 
   Only the owner of the game can start a game.
 
@@ -65,7 +64,24 @@ defmodule TtrCore.Games.Game do
   If the game has already been started, then an `{:error,
   :already_started}` tuple is returned.
   """
-  @spec begin(game(), player_id()) :: :ok | {:error, :not_owner | :already_started}
+  @spec setup(game(), player_id(), fun(), fun(), fun()) :: :ok | {:error, :not_owner | :not_enough_players | :not_in_unstarted}
+  def setup(game, player_id, train_fun, ticket_fun, display_train_fun) do
+    request = {:setup, player_id, train_fun, ticket_fun, display_train_fun}
+    GenServer.call(game, request, @default_timeout)
+  end
+
+  @doc """
+  Begins a game. Chooses a random starting player and begins ticker.
+
+  Only the owner of the game can start a game.
+
+  If the player id is not the owner of game, then an `{:error,
+  :not_owner}` tuple is returned.
+
+  If the game has already been started, then an `{:error,
+  :already_started}` tuple is returned.
+  """
+  @spec begin(game(), player_id()) :: :ok | {:error, :not_owner | :not_enough_players | :not_in_setup | :tickets_not_selected}
   def begin(game, player_id) do
     GenServer.call(game, {:begin, player_id}, @default_timeout)
   end
@@ -112,46 +128,82 @@ defmodule TtrCore.Games.Game do
     GenServer.cast(game, :force_next_turn)
   end
 
+  @doc """
+  Returns contextual state based on player id in order to not reveal
+  secrets to others.
+  """
+  @spec get_context(game(), player_id()) :: {:ok, Context.t} | {:error, :not_joined}
+  def get_context(game, player_id) do
+    GenServer.call(game, {:get, :context, player_id}, @default_timeout)
+  end
+
+  @doc """
+  Returns complete game state.
+  """
+  @spec get_state(game()) :: State.t
+  def get_state(game) do
+    GenServer.call(game, {:get, :state}, @default_timeout)
+  end
+
   # Callbacks
 
-  def init(%Options{id: id, owner_id: owner_id}) do
-    state = %State{}
-    |> Map.put(:id, id)
-    |> Map.put(:owner_id, owner_id)
-    |> Machine.add_player(owner_id)
-
-    {:ok, state}
+  def init(%{owner_id: owner_id} = state) do
+    {:ok, State.add_player(state, owner_id)}
   end
 
   def handle_call({:join, player_id}, _from, state) do
-    case Machine.can_join?(state, player_id) do
-      :ok -> {:reply, :ok, Machine.add_player(state, player_id)}
+    case State.can_join?(state, player_id) do
+      :ok -> {:reply, :ok, State.add_player(state, player_id)}
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
   end
 
   def handle_call({:leave, player_id}, _from, state) do
-    case Machine.can_leave?(state, player_id) do
+    case State.is_joined?(state, player_id) do
       :ok ->
         state
-        |> Machine.remove_player(player_id)
+        |> State.remove_player(player_id)
         |> stop_if_no_more_players
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
   end
 
-  def handle_call({:begin, player_id}, _from, state) do
-    case Machine.can_begin?(state, player_id) do
+  def handle_call({:setup, player_id, train_fun, ticket_fun, display_train_fun}, _from, state) do
+    case State.can_setup?(state, player_id) do
       :ok ->
-        {:ok, new_state} = Machine.begin_game(state)
-        start_tick = Ticker.get_new_start_tick()
-
-        Registry.register(Turns, :turns, {new_state.id, start_tick})
+        new_state = state
+        |> State.deal_trains(train_fun)
+        |> State.deal_tickets(ticket_fun)
+        |> State.display_trains(display_train_fun)
+        |> State.setup_game()
 
         {:reply, :ok, new_state}
       {:error, reason} ->
         {:reply, {:error, reason}, state}
+    end
+  end
+
+  def handle_call({:begin, player_id}, _from, %{id: game_id} = state) do
+    case State.can_begin?(state, player_id) do
+      :ok ->
+        new_state = state
+        |> State.choose_starting_player()
+        |> State.start_game()
+
+        start_tick = Ticker.get_new_start_tick()
+        Registry.register(Turns, :turns, {game_id, start_tick})
+
+        {:reply, :ok, new_state}
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  def handle_call({:perform, player_id, {:select_ticket_cards, tickets}}, _from, state) do
+    case State.select_tickets(state, player_id, tickets) do
+      {:ok, new_state} -> {:reply, :ok, new_state}
+      {:error, reason} -> {:reply, {:error, reason}, state}
     end
   end
 
@@ -167,8 +219,21 @@ defmodule TtrCore.Games.Game do
     {:reply, :ok, state}
   end
 
+  def handle_call({:get, :context, player_id}, _from, state) do
+    case State.is_joined?(state, player_id) do
+      :ok ->
+        {:reply, {:ok, State.generate_context(state, player_id)}, state}
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  def handle_call({:get, :state}, _from, state) do
+    {:reply, state, state}
+  end
+
   def handle_cast(:force_next_turn, %{current_player: player} = state) do
-    {:noreply, Machine.perform(state, {:force_end_turn, player})}
+    {:noreply, State.perform(state, {:force_end_turn, player})}
   end
 
   def terminate(reason, state) do

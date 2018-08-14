@@ -6,7 +6,7 @@ defmodule TtrCore do
 
   alias TtrCore.{
     Games,
-    Player
+    Players
   }
 
   alias TtrCore.Games.{
@@ -29,8 +29,7 @@ defmodule TtrCore do
     ]
 
     children = [
-      Player.DB,
-      Player.Session,
+      Players,
       Games,
       Ticker,
       {Registry, [keys: :unique, partitions: System.schedulers_online(), name: Index]},

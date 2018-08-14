@@ -1,4 +1,6 @@
 defmodule TtrCore.Cards.Tickets do
+  @moduledoc false
+
   use TtrCore.Cards.Conductor
 
   defticket Denver,         to: El.Paso,        value: 4

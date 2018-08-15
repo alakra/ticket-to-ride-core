@@ -10,7 +10,6 @@ defmodule TtrCore.Games do
     Action,
     Game,
     Index,
-    Result,
     State
   }
 
@@ -200,9 +199,8 @@ defmodule TtrCore.Games do
   end
 
   @doc """
-  Performs action on turn. An `:ok` or `{:ok, result}` is
-  returned on success. The `Result` is a datastructure that can be
-  used to update the current player's view of the game.
+  Performs action on turn. An `:ok` is returned on success. You must
+  `get_context/2` to see your updated state.
 
   If the game id does not exist, an `{:error, :not_found}` tuple is
   returned.
@@ -211,7 +209,7 @@ defmodule TtrCore.Games do
   an `{:error, :not_your_turn}` tuple is returned.
   """
   @spec perform(game_id(), user_id(), Action.t) ::
-    :ok | {:ok, Result.t} | {:error, :not_found | :not_your_turn | reason()}
+    :ok | {:error, :not_found | :not_your_turn | reason()}
   def perform(game_id, user_id, action) do
     case Registry.lookup(Index, game_id) do
       [{pid, _}] ->
@@ -256,7 +254,7 @@ defmodule TtrCore.Games do
   @spec get_state(game_id()) :: {:ok, State.t} | {:error, :not_found}
   def get_state(game_id) do
     case Registry.lookup(Index, game_id) do
-      [{pid, _}] -> Game.get_state(pid)
+      [{pid, _}] -> {:ok, Game.get_state(pid)}
         _ -> {:error, :not_found}
     end
   end

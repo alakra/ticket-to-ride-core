@@ -25,7 +25,7 @@ defmodule TtrCore.Cards do
   """
   @spec shuffle_tickets() :: [TicketCard.t]
   def shuffle_tickets do
-    Tickets.all() |> Enum.shuffle()
+    Tickets.get_tickets() |> Enum.shuffle()
   end
 
   @doc """

@@ -40,7 +40,7 @@ defmodule TtrCore.Games.SetupTest do
     test "successfully begins setup of a game", %{game_id: game_id, owner_id: owner_id} do
       assert :ok = Games.setup(game_id, owner_id)
 
-      assert %State{
+      assert {:ok, %State{
         id: ^game_id,
         owner_id: ^owner_id,
         current_player: nil,
@@ -61,7 +61,7 @@ defmodule TtrCore.Games.SetupTest do
         displayed_trains: displayed,
         discard_deck: [],
         stage: :setup
-      } = Games.get_state(game_id)
+      }} = Games.get_state(game_id)
 
       assert Enum.count(train_deck) == 97
       assert Enum.count(ticket_deck) == 24

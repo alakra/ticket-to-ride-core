@@ -16,11 +16,12 @@ defmodule TtrCore.Games.State do
     longest_path_owner: nil
   ]
 
-  @type stage :: :unstarted | :setup | :started | :finished
+  @type stage :: :unstarted | :setup | :started | :last_round | :finished
   @type meta :: list()
   @type player_id :: binary()
 
   @type t :: %__MODULE__{
+    current_player: player_id(),
     stage: stage(),
     stage_meta: meta()
   }
@@ -100,7 +101,7 @@ defmodule TtrCore.Games.State do
 
   @spec start_game(t) :: t
   def start_game(state) do
-    %{state | stage: :started}
+    %{state | stage: :started, stage_meta: []}
   end
 
   @spec deal_trains(t, fun()) :: t
@@ -183,6 +184,7 @@ defmodule TtrCore.Games.State do
       train_deck: Enum.count(state.train_deck),
       ticket_deck: Enum.count(state.ticket_deck),
       displayed_trains: state.displayed_trains,
+      current_player: state.current_player,
       other_players: other_players,
       longest_path_owner: state.longest_path_owner
     }

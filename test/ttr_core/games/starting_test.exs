@@ -50,9 +50,14 @@ defmodule TtrCore.Games.StartingTest do
     end
 
     test "sucessfully begins start of a game", %{game_id: game_id, owner_id: owner_id, other_id: other_id} do
+      assert {:ok, %State{
+        stage: :setup,
+        stage_meta: [^other_id, ^owner_id]
+      }} = Games.get_state(game_id)
+
       assert :ok = Games.begin(game_id, owner_id)
 
-      assert %State{
+      assert {:ok, %State{
         id: ^game_id,
         owner_id: ^owner_id,
         current_player: random_id,
@@ -73,8 +78,8 @@ defmodule TtrCore.Games.StartingTest do
         displayed_trains: displayed,
         discard_deck: [],
         stage: :started,
-        stage_meta: [^other_id, ^owner_id]
-      } = Games.get_state(game_id)
+        stage_meta: []
+      }} = Games.get_state(game_id)
 
       assert Enum.count(displayed) == 5
       assert Enum.count(ticket_deck) == 24

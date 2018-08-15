@@ -1,4 +1,6 @@
 defmodule TtrCore.Games.Action do
+  @moduledoc false
+
   alias TtrCore.Board.Route
   alias TtrCore.Cards.{
     TrainCard,

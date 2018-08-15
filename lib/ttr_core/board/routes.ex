@@ -1,4 +1,6 @@
 defmodule TtrCore.Board.Routes do
+  @moduledoc false
+
   use TtrCore.Board.Router
 
   defroute Atlanta,        to: Charleston,     distance: 2

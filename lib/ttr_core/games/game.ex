@@ -1,17 +1,6 @@
 defmodule TtrCore.Games.Game do
-  @moduledoc """
-  A `GenServer` process that manages the process tree of a single
-  game and handles joining, beginning, leaving, and finishing a game.
+  @moduledoc false
 
-  It forwards all other game actions onto `TtrCore.Game.State` and
-  `TtrCore.Game.Turns`.
-
-  ## Notes
-
-  This is not intended to be used directly unless debugging is
-  necessary. See `TtrCore.Games` for intended interface (documentation
-  for this module may eventually be removed to prevent confusion).
-  """
   use GenServer
 
   alias TtrCore.Games.{
@@ -33,18 +22,12 @@ defmodule TtrCore.Games.Game do
 
   # API
 
-  @doc """
-  Starts the `TtrCore.Game` process.
-  """
   @spec start_link(State.t) :: {:ok, pid()}
   def start_link(%State{id: id} = state) do
     name = {:via, Registry, {Index, id}}
     GenServer.start_link(__MODULE__, state, name: name)
   end
 
-  @doc """
-  Specifies `TtrCore.Game` to run as a worker.
-  """
   @spec child_spec(State.t) :: Supervisor.child_spec()
   def child_spec(state) do
     %{id: __MODULE__,
@@ -53,93 +36,42 @@ defmodule TtrCore.Games.Game do
       type: :worker}
   end
 
-  @doc """
-  Setups a game.
-
-  Only the owner of the game can start a game.
-
-  If the player id is not the owner of game, then an `{:error,
-  :not_owner}` tuple is returned.
-
-  If the game has already been started, then an `{:error,
-  :already_started}` tuple is returned.
-  """
   @spec setup(game(), player_id(), fun(), fun(), fun()) :: :ok | {:error, :not_owner | :not_enough_players | :not_in_unstarted}
   def setup(game, player_id, train_fun, ticket_fun, display_train_fun) do
     request = {:setup, player_id, train_fun, ticket_fun, display_train_fun}
     GenServer.call(game, request, @default_timeout)
   end
 
-  @doc """
-  Begins a game. Chooses a random starting player and begins ticker.
-
-  Only the owner of the game can start a game.
-
-  If the player id is not the owner of game, then an `{:error,
-  :not_owner}` tuple is returned.
-
-  If the game has already been started, then an `{:error,
-  :already_started}` tuple is returned.
-  """
   @spec begin(game(), player_id()) :: :ok | {:error, :not_owner | :not_enough_players | :not_in_setup | :tickets_not_selected}
   def begin(game, player_id) do
     GenServer.call(game, {:begin, player_id}, @default_timeout)
   end
 
-  @doc """
-  Join a game. Returns `:ok` if successfully joined.
-
-  If the game state indicates that the game is full, an `{:error,
-  :game_full}` tuple is returned.
-
-  If the game state shows that the player being added already exists
-  in ithe game, an `{:error, :already_joined}` tuple is returned.
-  """
   @spec join(game(), player_id()) :: :ok | {:error, :game_full | :already_joined}
   def join(game, player_id) do
     GenServer.call(game, {:join, player_id}, @default_timeout)
   end
 
-  @doc """
-  Leave a game. Returns `:ok` if left successfully left.
-
-  If the game state indicates that the user has not previously joined
-  the game, then an `{:error, :not_joined}` tuple is returned.
-  """
   @spec leave(game(), player_id()) :: :ok | {:error, :not_joined}
   def leave(game, player_id) do
     GenServer.call(game, {:leave, player_id}, @default_timeout)
   end
 
-  @doc """
-  Performs action on turn.
-  """
   @spec perform(game(), player_id(), Action.t) :: :ok | {:error, reason()}
   def perform(game, player_id, action) do
     GenServer.call(game, {:perform, player_id, action}, @default_timeout)
   end
 
-  @doc """
-  Force next turn on game state. Utilized by internal timing
-  system. Can be used for debug purposes also.
-  """
   @spec force_next_turn(game()) :: :ok
   def force_next_turn(game) do
     GenServer.cast(game, :force_next_turn)
   end
 
-  @doc """
-  Returns contextual state based on player id in order to not reveal
-  secrets to others.
-  """
   @spec get_context(game(), player_id()) :: {:ok, Context.t} | {:error, :not_joined}
   def get_context(game, player_id) do
     GenServer.call(game, {:get, :context, player_id}, @default_timeout)
   end
 
-  @doc """
-  Returns complete game state.
-  """
   @spec get_state(game()) :: State.t
   def get_state(game) do
     GenServer.call(game, {:get, :state}, @default_timeout)

@@ -1,6 +1,9 @@
 defmodule TtrCore.Games.Context do
+  @moduledoc false
+
   defstruct [
     id: nil,
+    game_id: nil,
     name: "",
     tickets: [],
     tickets_buffer: [],
@@ -10,6 +13,7 @@ defmodule TtrCore.Games.Context do
     train_deck: nil,
     ticket_deck: nil,
     displayed_trains: [],
+    current_player: nil,
     other_players: [],
     longest_path_owner: nil
   ]
@@ -22,7 +26,10 @@ defmodule TtrCore.Games.Context do
   }
 
   defmodule OtherPlayer do
+    @moduledoc false
+
     defstruct [
+      id: "",
       name: "",
       tickets: 0,
       trains: 0,
@@ -35,6 +42,7 @@ defmodule TtrCore.Games.Context do
   @type count :: integer()
 
   @type other_player :: %OtherPlayer{
+    id: Games.user_id(),
     name: String.t,
     tickets: count(),
     trains: count(),
@@ -44,7 +52,8 @@ defmodule TtrCore.Games.Context do
   }
 
   @type t :: %__MODULE__{
-    id: Games.game_id(),
+    id: Games.user_id(),
+    game_id: Games.game_id(),
     name: String.t,
     tickets: [TicketCard.t],
     tickets_buffer: [TicketCard.t],
@@ -53,6 +62,7 @@ defmodule TtrCore.Games.Context do
     train_deck: count(),
     ticket_deck: count(),
     displayed_trains: [TrainCard.t],
+    current_player: Game.user_id(),
     other_players: [other_player()],
     longest_path_owner: Games.user_id() | nil
   }

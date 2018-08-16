@@ -28,22 +28,34 @@ defmodule TtrCore.Players.Player do
     track_score: count()
   }
 
-  @spec add_tickets(t, [TicketCard.t]) :: Player.t
+  @spec add_route(t, Route.t) :: t
+  def add_route(%{routes: existing} = player, new) do
+    %{player | routes: [new|existing]}
+  end
+
+  @spec add_tickets(t, [TicketCard.t]) :: t
   def add_tickets(%{tickets: existing} = player, new) do
     %{player | tickets: new ++ existing}
   end
 
-  @spec add_tickets_to_buffer(t, [TicketCard.t]) :: Player.t
+  @spec add_tickets_to_buffer(t, [TicketCard.t]) :: t
   def add_tickets_to_buffer(player, new) do
     %{player | tickets_buffer: new}
   end
 
-  @spec add_trains(t, [TrainCard.t]) :: Player.t
+  @spec add_trains(t, [TrainCard.t]) :: t
   def add_trains(%{trains: existing} = player, new) do
     %{player | trains: new ++ existing}
   end
 
-  @spec remove_tickets_from_buffer(t, [TicketCard.t]) :: {Player.t, [TicketCard.t]}
+  @spec remove_trains(t, TrainCard.t, integer) :: t
+  def remove_trains(%{trains: existing} = player, train, count) do
+    remaining = existing -- (Stream.cycle([train]) |> Enum.take(count))
+    updated_player = %{player | trains: remaining}
+    {updated_player, remaining}
+  end
+
+  @spec remove_tickets_from_buffer(t, [TicketCard.t]) :: {t, [TicketCard.t]}
   def remove_tickets_from_buffer(player, selected) do
     remaining = player.tickets_buffer -- selected
     updated_player = %{player | tickets_buffer: []}

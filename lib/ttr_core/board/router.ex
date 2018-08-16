@@ -18,16 +18,18 @@ defmodule TtrCore.Board.Router do
       from     = unquote(from)
       to       = opts[:to]
       distance = opts[:distance]
-      trains   = opts[:trains] || :any
+      trains   = opts[:trains] || [:any]
 
-      route = %Route{
-        from: from,
-        to: to,
-        distance: distance,
-        trains: trains
-      }
+      Enum.each(trains, fn train ->
+        route = %Route{
+          from: from,
+          to: to,
+          distance: distance,
+          train: train
+        }
 
-      @routes Map.put(@routes, {from, to}, route)
+        @routes Map.put(@routes, {from, to}, route)
+      end)
     end
   end
 

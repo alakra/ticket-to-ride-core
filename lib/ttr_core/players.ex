@@ -42,6 +42,23 @@ defmodule TtrCore.Players do
   end
 
   @doc """
+  Checks to see if user id is registered.
+  """
+  @spec registered?(user_id()) :: boolean()
+  def registered?(user_id), do: DB.find_users([user_id]) != []
+
+  @doc """
+  Get all active users (those who are logged in with non-expired
+  sessions).
+  """
+  @spec get_active_users() :: [User.t]
+  def get_active_users() do
+    fn session -> session.user_id end
+    |> Session.find_active()
+    |> DB.find_users()
+  end
+
+  @doc """
   Registers username with password into the player database.  Returns
   the user id.
 
@@ -52,12 +69,6 @@ defmodule TtrCore.Players do
   """
   @spec register(username(), password()) :: {:ok, user_id()} | {:error, :already_registered}
   defdelegate register(username, password), to: DB
-
-  @doc """
-  Checks to see if user id is registered.
-  """
-  @spec registered?(user_id()) :: boolean()
-  def registered?(user_id), do: DB.find_users([user_id]) != []
 
   @doc """
   Login a user. Returns a token that is used to track a user's
@@ -97,6 +108,18 @@ defmodule TtrCore.Players do
   defdelegate add_trains(player, tickets), to: Player
 
   @doc """
+  Add route to player
+  """
+  @spec add_route(Player.t, Route.t) :: Player.t
+  defdelegate add_route(player, route), to: Player
+
+  @doc """
+  Remove specific number of trains from player
+  """
+  @spec remove_trains(Player.t, TrainCard.t, integer()) :: Player.t
+  defdelegate remove_trains(player, train, count), to: Player
+
+  @doc """
   Remove unused tickets from player's buffer. Looks at the passed in
   tickets and returns anything not in that list of cards that remains
   in the ticket buffer.
@@ -104,16 +127,6 @@ defmodule TtrCore.Players do
   @spec remove_tickets_from_buffer(Player.t, [TicketCard.t]) :: {Player.t, [TicketCard.t]}
   defdelegate remove_tickets_from_buffer(player, tickets), to: Player
 
-  @doc """
-  Get all active users (those who are logged in with non-expired
-  sessions).
-  """
-  @spec get_active_users() :: [User.t]
-  def get_active_users() do
-    fn session -> session.user_id end
-    |> Session.find_active()
-    |> DB.find_users()
-  end
 
   # Callbacks
 

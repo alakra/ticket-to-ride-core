@@ -42,7 +42,6 @@ defmodule TtrCore.Games.Context do
   @type count :: integer()
 
   @type other_player :: %OtherPlayer{
-    id: Games.user_id(),
     name: String.t,
     tickets: count(),
     trains: count(),

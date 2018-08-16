@@ -139,16 +139,18 @@ defmodule TtrCore.Games.Game do
     end
   end
 
-  def handle_call({:perform, player_id, action}, _from, %{current_player: current_player} = state) do
-    if player_id == current_player.id do
-      # ...
-      # TODO: action dispatch
-      # ...
-    else
-      Logger.warn("Ignoring player #{player_id} because it's not his turn.")
+  def handle_call({:perform, player_id, {:claim_route, route, train_card, cost}}, _from, state) do
+    case State.claim_route(state, player_id, route, train_card, cost) do
+      {:ok, new_state} -> {:reply, :ok, new_state}
+      {:error, reason} -> {:reply, {:error, reason}, state}
     end
+  end
 
-    {:reply, :ok, state}
+  def handle_call({:perform, player_id, :end_turn}, _from, state) do
+    case State.end_turn(state, player_id) do
+      {:ok, new_state} -> {:reply, :ok, new_state}
+      {:error, reason} -> {:reply, {:error, reason}, state}
+    end
   end
 
   def handle_call({:get, :context, player_id}, _from, state) do
@@ -165,7 +167,7 @@ defmodule TtrCore.Games.Game do
   end
 
   def handle_cast(:force_next_turn, %{current_player: player} = state) do
-    {:noreply, State.perform(state, {:force_end_turn, player})}
+    {:noreply, State.force_next_turn(state, player)}
   end
 
   def terminate(reason, state) do

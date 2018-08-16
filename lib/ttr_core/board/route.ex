@@ -1,7 +1,7 @@
 defmodule TtrCore.Board.Route do
   @moduledoc false
 
-  defstruct [:from, :to, :distance, :trains]
+  defstruct [:from, :to, :distance, :train]
 
   alias TtrCore.Cards.TrainCard
 
@@ -9,6 +9,6 @@ defmodule TtrCore.Board.Route do
     from: atom(),
     to: atom(),
     distance: integer(),
-    trains: [TrainCard.t] | :any
+    train: TrainCard.t | :any
   }
 end

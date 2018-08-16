@@ -26,9 +26,14 @@ defmodule TtrCore.Games.State do
     stage_meta: meta()
   }
 
-  alias TtrCore.Games.Context.OtherPlayer
+  alias TtrCore.{
+    Board,
+    Players
+  }
+
   alias TtrCore.Players.Player
-  alias TtrCore.Players
+
+  alias TtrCore.Games.Context.OtherPlayer
   alias TtrCore.Games.{
     Action,
     Context
@@ -146,15 +151,40 @@ defmodule TtrCore.Games.State do
     end
   end
 
+  @spec claim_route(t, player_id(), Route.t, TrainCard.t, integer()) :: {:ok, t} | {:error, :unavailable}
+  def claim_route(%{players: players} = state, player_id, route, train, cost) do
+    routes = Board.get_routes() |> Map.values()
+
+    %{trains: trains} = player = Enum.find(players, fn %{id: id} ->
+      id == player_id
+    end)
+
+    claimable = Enum.reduce(players, routes, fn %{routes: taken}, acc ->
+      acc -- taken
+    end)
+
+    has_stake = Enum.member?(claimable, route)
+    has_trains = Enum.count(trains, &(&1 == train)) >= cost
+
+    if has_stake and has_trains do
+      {updated_player, removed} = player
+      |> Players.add_route(route)
+      |> Players.remove_trains(train, cost)
+
+      new_state = state
+      |> discard_trains(removed)
+      |> replace_player(updated_player)
+
+      {:ok, new_state}
+    else
+      {:error, :unavailable}
+    end
+  end
+
   @spec display_trains(t, fun()) :: t
   def display_trains(%{train_deck: deck} = state, fun) do
     {display, new_deck} = fun.(deck)
     %{state| train_deck: new_deck, displayed_trains: display}
-  end
-
-  @spec perform(t, Action.t) :: t
-  def perform(state, action) do
-    # TBD
   end
 
   @spec generate_context(t, player_id()) :: Context.t
@@ -175,7 +205,8 @@ defmodule TtrCore.Games.State do
     end)
 
     %Context{
-      id: state.id,
+      id: player.id,
+      game_id: state.id,
       name: player.name,
       tickets: player.tickets,
       tickets_buffer: player.tickets_buffer,
@@ -188,6 +219,21 @@ defmodule TtrCore.Games.State do
       other_players: other_players,
       longest_path_owner: state.longest_path_owner
     }
+  end
+
+  @spec end_turn(t, player_id()) :: {:ok, t} | {:error, :not_turn}
+  def end_turn(%{players: players, current_player: current_id} = state, player_id) do
+    if player_id == current_id do
+      count = Enum.count(players)
+      index = Enum.find_index(players, fn %{id: id} -> id == player_id end)
+
+      next = if index == (count - 1), do: 0, else: count - 1
+      %{id: id} = Enum.at(players, next)
+
+      {:ok, %{state | current_player: id}}
+    else
+      {:error, :not_turn}
+    end
   end
 
   # Private
@@ -214,6 +260,10 @@ defmodule TtrCore.Games.State do
 
   defp return_tickets(state, tickets) do
     %{state | ticket_deck: state.ticket_deck ++ tickets}
+  end
+
+  defp discard_trains(%{discard_deck: existing} = state, removed) do
+    %{state | discard_deck: existing ++ removed}
   end
 
   defp update_meta(%{stage: :setup} = state, player_id) do

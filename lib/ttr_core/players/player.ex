@@ -11,6 +11,7 @@ defmodule TtrCore.Players.Player do
     tickets: [],
     tickets_buffer: [],
     trains: [],
+    trains_selected: 0,
     routes: [],
     track_score: 1
   ]
@@ -24,6 +25,7 @@ defmodule TtrCore.Players.Player do
     tickets: [TicketCard.t],
     tickets_buffer: [TicketCard.t],
     trains: [TrainCard.t],
+    trains_selected: count(),
     routes: [Route.t],
     track_score: count()
   }
@@ -31,6 +33,23 @@ defmodule TtrCore.Players.Player do
   @spec add_route(t, Route.t) :: t
   def add_route(%{routes: existing} = player, new) do
     %{player | routes: [new|existing]}
+  end
+
+  @spec add_trains(t, [TrainCard.t]) :: t
+  def add_trains(%{trains: existing} = player, new) do
+    %{player | trains: new ++ existing}
+  end
+
+  @spec add_trains_on_turn(t, [TrainCard.t]) :: t
+  def add_trains_on_turn(%{trains: existing, trains_selected: selected_count} = player, new) do
+    %{player | trains: new ++ existing, trains_selected: Enum.count(new) + selected_count}
+  end
+
+  @spec remove_trains(t, TrainCard.t, integer) :: t
+  def remove_trains(%{trains: existing} = player, train, count) do
+    remaining = existing -- (Stream.cycle([train]) |> Enum.take(count))
+    updated_player = %{player | trains: remaining}
+    {updated_player, remaining}
   end
 
   @spec add_tickets(t, [TicketCard.t]) :: t
@@ -43,22 +62,15 @@ defmodule TtrCore.Players.Player do
     %{player | tickets_buffer: new}
   end
 
-  @spec add_trains(t, [TrainCard.t]) :: t
-  def add_trains(%{trains: existing} = player, new) do
-    %{player | trains: new ++ existing}
-  end
-
-  @spec remove_trains(t, TrainCard.t, integer) :: t
-  def remove_trains(%{trains: existing} = player, train, count) do
-    remaining = existing -- (Stream.cycle([train]) |> Enum.take(count))
-    updated_player = %{player | trains: remaining}
-    {updated_player, remaining}
-  end
-
   @spec remove_tickets_from_buffer(t, [TicketCard.t]) :: {t, [TicketCard.t]}
   def remove_tickets_from_buffer(player, selected) do
     remaining = player.tickets_buffer -- selected
     updated_player = %{player | tickets_buffer: []}
     {updated_player, remaining}
+  end
+
+  @spec reset_selections(t) :: t
+  def reset_selections(player) do
+    %{player | trains_selected: 0}
   end
 end

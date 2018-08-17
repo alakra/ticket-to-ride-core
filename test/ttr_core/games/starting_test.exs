@@ -41,10 +41,10 @@ defmodule TtrCore.Games.StartingTest do
   describe "begin/2 with tickets selected" do
     setup %{game_id: game_id, owner_id: owner_id, other_id: other_id} do
       {:ok, %{tickets_buffer: owner_tickets}} = Games.get_context(game_id, owner_id)
-      Games.perform(game_id, owner_id, {:select_ticket_cards, owner_tickets})
+      Games.perform(game_id, owner_id, {:select_tickets, owner_tickets})
 
       {:ok, %{tickets_buffer: other_tickets}} = Games.get_context(game_id, other_id)
-      Games.perform(game_id, other_id, {:select_ticket_cards, other_tickets})
+      Games.perform(game_id, other_id, {:select_tickets, other_tickets})
 
       :ok
     end

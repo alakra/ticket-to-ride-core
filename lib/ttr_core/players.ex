@@ -108,6 +108,12 @@ defmodule TtrCore.Players do
   defdelegate add_trains(player, tickets), to: Player
 
   @doc """
+  Add trains to player on turn
+  """
+  @spec add_trains_on_turn(Player.t, [TicketCard.t]) :: Player.t
+  defdelegate add_trains_on_turn(player, tickets), to: Player
+
+  @doc """
   Add route to player
   """
   @spec add_route(Player.t, Route.t) :: Player.t
@@ -120,13 +126,18 @@ defmodule TtrCore.Players do
   defdelegate remove_trains(player, train, count), to: Player
 
   @doc """
-  Remove unused tickets from player's buffer. Looks at the passed in
+  Remove tickets from player's buffer. Looks at the passed in
   tickets and returns anything not in that list of cards that remains
   in the ticket buffer.
   """
   @spec remove_tickets_from_buffer(Player.t, [TicketCard.t]) :: {Player.t, [TicketCard.t]}
   defdelegate remove_tickets_from_buffer(player, tickets), to: Player
 
+  @doc """
+  Reset player's selections (trains, tickets, etc.)
+  """
+  @spec reset_selections(Player.t) :: Player.t
+  defdelegate reset_selections(player), to: Player
 
   # Callbacks
 

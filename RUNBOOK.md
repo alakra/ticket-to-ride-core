@@ -33,10 +33,10 @@ alias TtrCore.{
 :ok = Games.setup(id, session_a.user_id)
 
 {:ok, %{tickets_buffer: tickets_a}} = Games.get_context(id, session_a.user_id)
-:ok = Games.perform(id, session_a.user_id, {:select_ticket_cards, tickets_a})
+:ok = Games.perform(id, session_a.user_id, {:select_tickets, tickets_a})
 
 {:ok, %{tickets_buffer: tickets_b}} = Games.get_context(id, session_b.user_id)
-Games.perform(id, session_b.user_id, {:select_ticket_cards, tickets_b})
+Games.perform(id, session_b.user_id, {:select_tickets, tickets_b})
 
 :ok = Games.begin(id, session_a.user_id)
 

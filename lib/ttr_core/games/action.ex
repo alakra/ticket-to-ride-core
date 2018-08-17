@@ -10,10 +10,10 @@ defmodule TtrCore.Games.Action do
   @type count() :: integer()
 
   @type t :: {:claim_route, Route.t, TrainCard.t, count()}
-  | {:draw_train_cards, count()}
-  | {:draw_ticket_cards, count()}
-  | {:select_train_cards, [TrainCard.t]}
-  | {:select_ticket_cards, [TicketCard.t]}
+  | {:draw_trains, count()}
+  | {:draw_tickets, count()}
+  | {:select_trains, [TrainCard.t]}
+  | {:select_tickets, [TicketCard.t]}
   | :end_turn
   | :force_end_turn
 end

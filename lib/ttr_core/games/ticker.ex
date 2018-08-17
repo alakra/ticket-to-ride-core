@@ -48,7 +48,7 @@ defmodule TtrCore.Games.Ticker do
 
     Registry.dispatch(Turns, :turns, fn entries ->
       Enum.each(entries,
-        fn {pid, ^count} -> Game.force_next_turn(pid)
+        fn {pid, ^count} -> Game.force_end_turn(pid)
             _ -> :ok
         end)
     end)

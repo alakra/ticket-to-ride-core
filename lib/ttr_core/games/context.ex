@@ -11,6 +11,7 @@ defmodule TtrCore.Games.Context do
     routes: [],
     pieces: [],
     train_deck: nil,
+    trains_selected: 0,
     ticket_deck: nil,
     displayed_trains: [],
     current_player: nil,
@@ -29,7 +30,6 @@ defmodule TtrCore.Games.Context do
     @moduledoc false
 
     defstruct [
-      id: "",
       name: "",
       tickets: 0,
       trains: 0,
@@ -57,6 +57,7 @@ defmodule TtrCore.Games.Context do
     tickets: [TicketCard.t],
     tickets_buffer: [TicketCard.t],
     trains: [TrainCard.t],
+    trains_selected: count(),
     routes: [Route.t],
     train_deck: count(),
     ticket_deck: count(),

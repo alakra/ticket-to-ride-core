@@ -62,9 +62,9 @@ defmodule TtrCore.Games.Game do
     GenServer.call(game, {:perform, player_id, action}, @default_timeout)
   end
 
-  @spec force_next_turn(game()) :: :ok
-  def force_next_turn(game) do
-    GenServer.cast(game, :force_next_turn)
+  @spec force_end_turn(game()) :: :ok
+  def force_end_turn(game) do
+    GenServer.cast(game, :force_end_turn)
   end
 
   @spec get_context(game(), player_id()) :: {:ok, Context.t} | {:error, :not_joined}
@@ -132,11 +132,23 @@ defmodule TtrCore.Games.Game do
     end
   end
 
-  def handle_call({:perform, player_id, {:select_ticket_cards, tickets}}, _from, state) do
+  def handle_call({:perform, player_id, {:select_tickets, tickets}}, _from, state) do
     case State.select_tickets(state, player_id, tickets) do
       {:ok, new_state} -> {:reply, :ok, new_state}
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
+  end
+
+  def handle_call({:perform, player_id, {:select_trains, trains}}, _from, state) do
+    case State.select_trains(state, player_id, trains) do
+      {:ok, new_state} -> {:reply, :ok, new_state}
+      {:error, reason} -> {:reply, {:error, reason}, state}
+    end
+  end
+
+  def handle_call({:perform, player_id, {:draw_trains, count}}, _from, state) do
+    {:ok, new_state} = State.draw_trains(state, player_id, count)
+    {:reply, :ok, new_state}
   end
 
   def handle_call({:perform, player_id, {:claim_route, route, train_card, cost}}, _from, state) do
@@ -166,8 +178,8 @@ defmodule TtrCore.Games.Game do
     {:reply, state, state}
   end
 
-  def handle_cast(:force_next_turn, %{current_player: player} = state) do
-    {:noreply, State.force_next_turn(state, player)}
+  def handle_cast(:force_end_turn, state) do
+    {:noreply, State.force_end_turn(state)}
   end
 
   def terminate(reason, state) do
@@ -175,7 +187,7 @@ defmodule TtrCore.Games.Game do
       {:shutdown, :not_enough_players} ->
         Logger.info("Game exiting [#{state.id}]: not enough players")
       _ ->
-        Logger.warn("Game exiting [#{state.id}]: #{reason |> Kernel.inspect}")
+        Logger.warn("Game exiting [#{state.id}]: #{Kernel.inspect(reason)}")
     end
   end
 

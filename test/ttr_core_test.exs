@@ -43,55 +43,60 @@ defmodule TtrCoreTest do
       assert :ok = Games.setup(id, session_a.user_id)
 
       assert {:ok, %{tickets_buffer: tickets_a}} = Games.get_context(id, session_a.user_id)
-      assert :ok = Games.perform(id, session_a.user_id, {:select_ticket_cards, tickets_a})
+      assert :ok = Games.perform(id, session_a.user_id, {:select_tickets, tickets_a})
 
       assert {:ok, %{tickets_buffer: tickets_b}} = Games.get_context(id, session_b.user_id)
-      assert Games.perform(id, session_b.user_id, {:select_ticket_cards, tickets_b})
+      assert Games.perform(id, session_b.user_id, {:select_tickets, tickets_b})
 
       assert :ok = Games.begin(id, session_a.user_id)
 
-      # Game Play - Automating this in a fixed loop
-
-      ## Find out who goes first
-
-      assert {:ok, context_a} = Games.get_context(id, session_a.user_id)
-      assert {:ok, context_b} = Games.get_context(id, session_b.user_id)
-
-      context = Enum.find([context_a, context_b], fn c ->
-        c.current_player == c.id
-      end)
-
-      routes = Board.get_routes() |> Map.values()
-      routes = (routes -- context_a.routes) -- context_b.routes
-
-      ### Check to see if a route can be claimed, if so claim it and end turn
-      ### Check to see if trains can be selected, if so draw 1 and end turn
-      ### Check to see if trains can be drawn, if so draw 1 and end turn
-      ### Check to see if tickets can be drawn, if so draw 1 and end turn
-
-      %{context: context, finish_turn: false}
-      |> claim_route(routes)
-      |> select_train()
-      |> draw_train()
-      |> draw_tickets()
-      |> end_turn()
-
-      # Finishing
-
-      ### Automatically move to last round if any player has 2 or less pieces left
-      ### Declare winner to log and shutdown game
-
+      main_loop(id, session_a, session_b)
     end
   end
 
   # Private
+
+  defp main_loop(id, session_a, session_b) do
+    ## Find out who goes first
+    assert {:ok, context_a} = Games.get_context(id, session_a.user_id)
+    assert {:ok, context_b} = Games.get_context(id, session_b.user_id)
+
+    context = Enum.find([context_a, context_b], fn c ->
+      c.current_player == c.id
+    end)
+
+    routes = Board.get_routes() |> Map.values()
+    routes = (routes -- context_a.routes) -- context_b.routes
+
+    ### Check to see if a route can be claimed, if so claim it and end turn
+    ### Check to see if trains can be selected, if so draw 1 and end turn
+    ### Check to see if trains can be drawn, if so draw 1 and end turn
+    ### Check to see if tickets can be drawn, if so draw 1 and end turn
+
+    %{context: context, finish_turn: false}
+    |> claim_route(routes)
+    |> select_trains()
+    |> draw_trains()
+    |> draw_tickets()
+    |> select_tickets()
+    |> end_turn()
+
+    # Finishing
+    state = Games.get_state(id)
+
+    if {:ok, %{stage: :finished}} == state  do
+      ### Automatically move to last round if any player has 2 or less pieces left
+      ### Declare winner to log and shutdown game
+    else
+      main_loop(id, session_a, session_b)
+    end
+  end
 
   defp claim_route(%{context: %{id: id, game_id: game_id, trains: cards}} = status, routes) do
     {route_to_claim, train, cost} = Enum.reduce_while(routes, {:no_route, :no_train, 0}, fn
       %{train: :any, distance: distance} = route, acc ->
         # 1. Groups every held card into card -> count
         # 2. Compares each card count to the distance to see if there is at least enough to claim this route
-
         result = cards
         |> Enum.reduce(%{}, fn card, map -> Map.put(map, card, Map.get(map, card, 0) + 1) end)
         |> Enum.find(false, fn {_, count} -> count >= distance end)
@@ -106,7 +111,6 @@ defmodule TtrCoreTest do
         # 1. Finds every card held that matches the train route
         # 2. Counts them
         # 3. Compares the count to the distance to see if there is at least enough to claim this route
-
         if Enum.count(cards, &(&1 == train)) >= distance do
           {:halt, {route, train, distance}}
         else
@@ -122,15 +126,45 @@ defmodule TtrCoreTest do
     end
   end
 
-  defp select_train(status) do
+  defp select_trains(%{finish_turn: true} = status), do: status
+  defp select_trains(status) do
+    %{context:
+      %{
+        id: user_id,
+        game_id: game_id,
+        displayed_trains: displayed
+      }
+    } = status
+
+    first = List.first(displayed)
+    :ok = Games.perform(game_id, user_id, {:select_trains, [first]})
+
     status
   end
 
-  defp draw_train(status) do
+  defp draw_trains(%{finish_turn: true} = status), do: status
+  defp draw_trains(%{finish_turn: finish_turn} = status) do
+    %{context:
+      %{
+        id: user_id,
+        game_id: game_id,
+        train_deck: deck
+      }
+    } = status
+
+
+    :ok = Games.perform(game_id, user_id, {:draw_trains, 1})
+
     status
   end
 
-  defp draw_tickets(status) do
+  defp draw_tickets(%{finish_turn: true} = status), do: status
+  defp draw_tickets(%{finish_turn: finish_turn} = status) do
+    status
+  end
+
+  defp select_tickets(%{finish_turn: true} = status), do: status
+  defp select_tickets(%{finish_turn: finish_turn} = status) do
     status
   end
 

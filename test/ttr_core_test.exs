@@ -62,6 +62,10 @@ defmodule TtrCoreTest do
     if stage == :finished do
       assert state.winner_id
       assert state.winner_score > 0
+
+      assert state.players
+      |> Enum.map(&(Enum.count(&1.tickets)))
+      |> Enum.sum() == 30
     else
       assert {:ok, context_a} = Games.get_context(id, session_a.user_id)
       assert {:ok, context_b} = Games.get_context(id, session_b.user_id)

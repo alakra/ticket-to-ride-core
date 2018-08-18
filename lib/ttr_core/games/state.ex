@@ -157,8 +157,6 @@ defmodule TtrCore.Games.State do
     player = Enum.find(players, fn %{id: id} -> id == player_id end)
     {:ok, new_deck, updated_player} = Cards.deal_tickets(deck, player, 3)
 
-    IO.inspect "D tickets (#{player_id}): #{inspect(updated_player.tickets_buffer)}"
-
     %{state | ticket_deck: new_deck}
     |> replace_player(updated_player)
   end
@@ -166,8 +164,6 @@ defmodule TtrCore.Games.State do
   @spec select_tickets(t, player_id(), [TicketCard.t]) :: {:ok, t} | {:error, :invalid_tickets}
   def select_tickets(%{players: players} = state, player_id, tickets) do
     player = Enum.find(players, fn %{id: id} -> id == player_id end)
-
-    IO.inspect "S tickets (#{player_id}): #{inspect(tickets)}"
 
     if player_has_tickets?(player, tickets) do
       {updated_player, removed} = player

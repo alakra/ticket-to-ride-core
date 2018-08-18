@@ -5,11 +5,12 @@ defmodule TtrCore.Games.Context do
     id: nil,
     game_id: nil,
     name: "",
+    stage: :unstarted,
     tickets: [],
     tickets_buffer: [],
     trains: [],
     routes: [],
-    pieces: [],
+    pieces: 45,
     train_deck: nil,
     trains_selected: 0,
     ticket_deck: nil,
@@ -35,7 +36,6 @@ defmodule TtrCore.Games.Context do
       trains: 0,
       pieces: 0,
       routes: [],
-      track_score: 0
     ]
   end
 
@@ -46,8 +46,7 @@ defmodule TtrCore.Games.Context do
     tickets: count(),
     trains: count(),
     pieces: count(),
-    routes: [Route.t],
-    track_score: count()
+    routes: [Route.t]
   }
 
   @type t :: %__MODULE__{

@@ -114,10 +114,10 @@ defmodule TtrCore.Players do
   defdelegate add_trains_on_turn(player, tickets), to: Player
 
   @doc """
-  Add route to player
+  Add route to player with cost
   """
-  @spec add_route(Player.t, Route.t) :: Player.t
-  defdelegate add_route(player, route), to: Player
+  @spec add_route(Player.t, Route.t, integer()) :: Player.t
+  defdelegate add_route(player, route, count), to: Player
 
   @doc """
   Remove specific number of trains from player
@@ -138,6 +138,14 @@ defmodule TtrCore.Players do
   """
   @spec reset_selections(Player.t) :: Player.t
   defdelegate reset_selections(player), to: Player
+
+  @doc """
+  Checks to see if any players are out of stock (2 or less trains)
+  """
+  @spec any_out_of_stock?([Player.t]) :: boolean()
+  def any_out_of_stock?(players) do
+    Enum.any?(players, fn player -> Player.out_of_stock?(player) end)
+  end
 
   # Callbacks
 

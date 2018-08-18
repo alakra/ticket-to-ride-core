@@ -13,7 +13,6 @@ defmodule TtrCore.Players.Player do
     trains: [],
     trains_selected: 0,
     routes: [],
-    track_score: 1
   ]
 
   @type count :: integer()
@@ -26,13 +25,12 @@ defmodule TtrCore.Players.Player do
     tickets_buffer: [TicketCard.t],
     trains: [TrainCard.t],
     trains_selected: count(),
-    routes: [Route.t],
-    track_score: count()
+    routes: [Route.t]
   }
 
-  @spec add_route(t, Route.t) :: t
-  def add_route(%{routes: existing} = player, new) do
-    %{player | routes: [new|existing]}
+  @spec add_route(t, Route.t, integer()) :: t
+  def add_route(%{routes: existing, pieces: pieces} = player, new, cost) do
+    %{player | routes: [new|existing], pieces: pieces - cost}
   end
 
   @spec add_trains(t, [TrainCard.t]) :: t
@@ -72,5 +70,10 @@ defmodule TtrCore.Players.Player do
   @spec reset_selections(t) :: t
   def reset_selections(player) do
     %{player | trains_selected: 0}
+  end
+
+  @spec out_of_stock?(t) :: boolean()
+  def out_of_stock?(%{pieces: pieces}) do
+    pieces <= 2
   end
 end

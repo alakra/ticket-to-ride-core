@@ -139,6 +139,10 @@ defmodule TtrCore.Games.Game do
     end
   end
 
+  def handle_call({:perform, player_id, :draw_tickets}, _from, state) do
+    {:reply, :ok, State.draw_tickets(state, player_id)}
+  end
+
   def handle_call({:perform, player_id, {:select_trains, trains}}, _from, state) do
     case State.select_trains(state, player_id, trains) do
       {:ok, new_state} -> {:reply, :ok, new_state}

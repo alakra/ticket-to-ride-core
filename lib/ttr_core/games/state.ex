@@ -6,6 +6,8 @@ defmodule TtrCore.Games.State do
   defstruct [
     id: nil,
     owner_id: nil,
+    winner_id: :none,
+    winner_score: 0,
     players: [],
     routes: [],
     ticket_deck: [],
@@ -31,6 +33,7 @@ defmodule TtrCore.Games.State do
 
   alias TtrCore.{
     Board,
+    Cards,
     Players
   }
 
@@ -149,9 +152,22 @@ defmodule TtrCore.Games.State do
     %{state | ticket_deck: remaining_deck, players: updated_players}
   end
 
+  @spec draw_tickets(t, player_id()) :: t
+  def draw_tickets(%{ticket_deck: deck, players: players} = state, player_id) do
+    player = Enum.find(players, fn %{id: id} -> id == player_id end)
+    {:ok, new_deck, updated_player} = Cards.deal_tickets(deck, player, 3)
+
+    IO.inspect "D tickets (#{player_id}): #{inspect(updated_player.tickets_buffer)}"
+
+    %{state | ticket_deck: new_deck}
+    |> replace_player(updated_player)
+  end
+
   @spec select_tickets(t, player_id(), [TicketCard.t]) :: {:ok, t} | {:error, :invalid_tickets}
   def select_tickets(%{players: players} = state, player_id, tickets) do
     player = Enum.find(players, fn %{id: id} -> id == player_id end)
+
+    IO.inspect "S tickets (#{player_id}): #{inspect(tickets)}"
 
     if player_has_tickets?(player, tickets) do
       {updated_player, removed} = player
@@ -191,7 +207,7 @@ defmodule TtrCore.Games.State do
   def claim_route(%{players: players} = state, player_id, route, train, cost) do
     routes = Board.get_routes() |> Map.values()
 
-    %{trains: trains} = player = Enum.find(players, fn %{id: id} ->
+    %{trains: trains, pieces: pieces} = player = Enum.find(players, fn %{id: id} ->
       id == player_id
     end)
 
@@ -200,11 +216,12 @@ defmodule TtrCore.Games.State do
     end)
 
     has_stake = Enum.member?(claimable, route)
-    has_trains = Enum.count(trains, &(&1 == train)) >= cost
+    has_trains = Enum.count(trains) >= cost
+    has_pieces = pieces >= cost
 
-    if has_stake and has_trains do
+    if has_stake and has_trains and has_pieces do
       {updated_player, removed} = player
-      |> Players.add_route(route)
+      |> Players.add_route(route, cost)
       |> Players.remove_trains(train, cost)
 
       new_state = state
@@ -235,15 +252,16 @@ defmodule TtrCore.Games.State do
         tickets: Enum.count(player.tickets),
         trains: Enum.count(player.trains),
         pieces: player.pieces,
-        routes: player.routes,
-        track_score: player.track_score
+        routes: player.routes
       }
     end)
 
     %Context{
       id: player.id,
+      stage: state.stage,
       game_id: state.id,
       name: player.name,
+      pieces: player.pieces,
       tickets: player.tickets,
       tickets_buffer: player.tickets_buffer,
       trains: player.trains,
@@ -279,21 +297,73 @@ defmodule TtrCore.Games.State do
     new_state = state
     |> reset_players_selections()
     |> Map.put(:current_player, id)
+    |> move_stage()
 
     new_state
   end
 
   # Private
+  defp move_stage(%{current_player: id, stage: :last_round, stage_meta: meta, players: players} = state) do
+    if all_players_played_last_round?(players, meta) do
+      {winner_id, score} = calculate_winner(players)
+      %{state |
+        winner_id: winner_id,
+        winner_score: score,
+        stage: :finished,
+        stage_meta: []}
+    else
+      %{state | stage_meta: [id|meta]}
+    end
+  end
+  defp move_stage(%{stage: :started, players: players} = state) do
+    if Players.any_out_of_stock?(players) do
+      %{state | stage: :last_round, stage_meta: []}
+    else
+      state
+    end
+  end
+  defp move_stage(%{stage: _} = state), do: state
+
+  defp calculate_winner(players) do
+    players
+    |> Enum.map(&({&1.id, calculate_score(&1)}))
+    |> Enum.max_by(fn {_, score} -> score end)
+  end
+
+  defp calculate_score(%{routes: routes}) do
+    routes
+    |> Enum.map(&(calculate_route_score(&1.distance)))
+    |> Enum.sum()
+  end
+
+  defp calculate_route_score(6), do: 15
+  defp calculate_route_score(5), do: 10
+  defp calculate_route_score(4), do: 7
+  defp calculate_route_score(3), do: 4
+  defp calculate_route_score(2), do: 2
+  defp calculate_route_score(1), do: 1
+
+  defp all_players_played_last_round?(players, meta) do
+    ids = players |> Enum.map(&(&1.id)) |> Enum.sort()
+    meta_ids = Enum.sort(meta)
+
+    ids == meta_ids
+  end
 
   defp reset_players_selections(%{players: players} = state) do
     %{state | players: Enum.map(players, &(Players.reset_selections(&1)))}
   end
 
-  defp transfer_ownership_if_host_left(state) do
-    result = Enum.any?(state.players, fn player -> player.id == state.owner_id end)
+  defp transfer_ownership_if_host_left(%{players: players, owner_id: owner_id} = state) do
+    result = Enum.any?(players, &(&1.id == owner_id))
+
+    new_owner_id = case List.first(players) do
+                     nil -> :none
+                     %{id: id} -> id
+                   end
 
     if result do
-      %{state | owner_id: List.first(state.players).id}
+      %{state | owner_id: new_owner_id}
     else
       state
     end

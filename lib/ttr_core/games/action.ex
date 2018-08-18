@@ -11,9 +11,9 @@ defmodule TtrCore.Games.Action do
 
   @type t :: {:claim_route, Route.t, TrainCard.t, count()}
   | {:draw_trains, count()}
-  | {:draw_tickets, count()}
   | {:select_trains, [TrainCard.t]}
   | {:select_tickets, [TicketCard.t]}
+  | :draw_tickets
   | :end_turn
   | :force_end_turn
 end

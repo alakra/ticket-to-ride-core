@@ -57,41 +57,35 @@ defmodule TtrCoreTest do
   # Private
 
   defp main_loop(id, session_a, session_b) do
-    ## Find out who goes first
-    assert {:ok, context_a} = Games.get_context(id, session_a.user_id)
-    assert {:ok, context_b} = Games.get_context(id, session_b.user_id)
+    {:ok, %{stage: stage} = state} = Games.get_state(id)
 
-    context = Enum.find([context_a, context_b], fn c ->
-      c.current_player == c.id
-    end)
-
-    routes = Board.get_routes() |> Map.values()
-    routes = (routes -- context_a.routes) -- context_b.routes
-
-    ### Check to see if a route can be claimed, if so claim it and end turn
-    ### Check to see if trains can be selected, if so draw 1 and end turn
-    ### Check to see if trains can be drawn, if so draw 1 and end turn
-    ### Check to see if tickets can be drawn, if so draw 1 and end turn
-
-    %{context: context, finish_turn: false}
-    |> claim_route(routes)
-    |> select_trains()
-    |> draw_trains()
-    |> draw_tickets()
-    |> select_tickets()
-    |> end_turn()
-
-    # Finishing
-    state = Games.get_state(id)
-
-    if {:ok, %{stage: :finished}} == state  do
-      ### Automatically move to last round if any player has 2 or less pieces left
-      ### Declare winner to log and shutdown game
+    if stage == :finished do
+      assert state.winner_id
+      assert state.winner_score > 0
     else
+      assert {:ok, context_a} = Games.get_context(id, session_a.user_id)
+      assert {:ok, context_b} = Games.get_context(id, session_b.user_id)
+
+      context = Enum.find([context_a, context_b], fn c ->
+        c.current_player == c.id
+      end)
+
+      routes = Board.get_routes() |> Map.values()
+      routes = (routes -- context_a.routes) -- context_b.routes
+
+      %{context: context, finish_turn: false}
+      |> claim_route(routes)
+      |> select_trains()
+      |> draw_trains()
+      |> draw_tickets()
+      |> select_tickets()
+      |> end_turn()
+
       main_loop(id, session_a, session_b)
     end
   end
 
+  defp claim_route(%{context: %{pieces: pieces}} = status, _routes) when pieces <= 2, do: status
   defp claim_route(%{context: %{id: id, game_id: game_id, trains: cards}} = status, routes) do
     {route_to_claim, train, cost} = Enum.reduce_while(routes, {:no_route, :no_train, 0}, fn
       %{train: :any, distance: distance} = route, acc ->
@@ -121,8 +115,10 @@ defmodule TtrCoreTest do
     if route_to_claim == :no_route do
       status
     else
-      :ok = Games.perform(game_id, id, {:claim_route, route_to_claim, train, cost})
-      %{status | finish_turn: true}
+      case Games.perform(game_id, id, {:claim_route, route_to_claim, train, cost}) do
+        :ok -> %{status | finish_turn: true}
+        {:error, _} -> status
+      end
     end
   end
 
@@ -136,14 +132,16 @@ defmodule TtrCoreTest do
       }
     } = status
 
-    first = List.first(displayed)
-    :ok = Games.perform(game_id, user_id, {:select_trains, [first]})
+    if not Enum.empty?(displayed) do
+      first = List.first(displayed)
+      :ok = Games.perform(game_id, user_id, {:select_trains, [first]})
+    end
 
     status
   end
 
   defp draw_trains(%{finish_turn: true} = status), do: status
-  defp draw_trains(%{finish_turn: finish_turn} = status) do
+  defp draw_trains(status) do
     %{context:
       %{
         id: user_id,
@@ -152,19 +150,46 @@ defmodule TtrCoreTest do
       }
     } = status
 
-
-    :ok = Games.perform(game_id, user_id, {:draw_trains, 1})
+    if deck > 0 do
+      :ok = Games.perform(game_id, user_id, {:draw_trains, 1})
+    end
 
     status
   end
 
   defp draw_tickets(%{finish_turn: true} = status), do: status
-  defp draw_tickets(%{finish_turn: finish_turn} = status) do
+  defp draw_tickets(status) do
+    %{context:
+      %{
+        id: user_id,
+        game_id: game_id,
+        ticket_deck: deck
+      }
+    } = status
+
+    if deck >= 3 do
+      :ok = Games.perform(game_id, user_id, :draw_tickets)
+    end
+
     status
   end
 
   defp select_tickets(%{finish_turn: true} = status), do: status
-  defp select_tickets(%{finish_turn: finish_turn} = status) do
+  defp select_tickets(status) do
+    %{context:
+      %{
+        id: user_id,
+        game_id: game_id
+      }
+    } = status
+
+    {:ok, %{tickets_buffer: buffer}} =
+      Games.get_context(game_id, user_id)
+
+    if not Enum.empty?(buffer) do
+      :ok = Games.perform(game_id, user_id, {:select_tickets, buffer})
+    end
+
     status
   end
 

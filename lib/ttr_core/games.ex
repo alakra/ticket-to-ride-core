@@ -102,11 +102,7 @@ defmodule TtrCore.Games do
     case Registry.lookup(Index, game_id) do
       [{pid, _}] ->
         Logger.info("setup game:#{game_id}")
-
-        Game.setup(pid, user_id,
-          fn train_deck, player -> Cards.deal_trains(train_deck, player, 4) end,
-          fn ticket_deck, player -> Cards.deal_tickets(ticket_deck, player, 3) end,
-          fn train_deck -> Enum.split(train_deck, 5) end)
+        Game.setup(pid, user_id)
       _ ->
         {:error, :not_found}
     end

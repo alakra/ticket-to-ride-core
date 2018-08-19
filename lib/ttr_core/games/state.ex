@@ -1,7 +1,7 @@
 defmodule TtrCore.Games.State do
   # TODO: Change players to a map with user id as the key
 
-  @moduledoc false
+#  @moduledoc false
 
   defstruct [
     id: nil,
@@ -114,11 +114,11 @@ defmodule TtrCore.Games.State do
     %{state | stage: :started, stage_meta: []}
   end
 
-  @spec deal_trains(t, fun()) :: t
-  def deal_trains(%{train_deck: train_deck, players: players} = state, fun) do
+  @spec deal_trains(t) :: t
+  def deal_trains(%{train_deck: train_deck, players: players} = state) do
     {remaining_deck, updated_players} =
       Enum.reduce(players, {train_deck, []}, fn player, {deck, acc} ->
-        {:ok, remainder, player} = fun.(deck, player)
+        {:ok, remainder, player} = Cards.deal_trains(deck, player, 4)
         {remainder, acc ++ [player]}
       end)
 
@@ -141,11 +141,11 @@ defmodule TtrCore.Games.State do
     {:ok, new_state}
   end
 
-  @spec deal_tickets(t, fun()) :: t
-  def deal_tickets(%{ticket_deck: ticket_deck, players: players} = state, fun) do
+  @spec deal_tickets(t) :: t
+  def deal_tickets(%{ticket_deck: ticket_deck, players: players} = state) do
     {remaining_deck, updated_players} =
       Enum.reduce(players, {ticket_deck, []}, fn player, {deck, acc} ->
-        {:ok, remainder, player} = fun.(deck, player)
+        {:ok, remainder, player} = Cards.deal_tickets(deck, player, 3)
         {remainder, acc ++ [player]}
       end)
 
@@ -230,9 +230,9 @@ defmodule TtrCore.Games.State do
     end
   end
 
-  @spec display_trains(t, fun()) :: t
-  def display_trains(%{train_deck: deck} = state, fun) do
-    {display, new_deck} = fun.(deck)
+  @spec display_trains(t) :: t
+  def display_trains(%{train_deck: deck} = state) do
+    {display, new_deck} = Enum.split(deck, 5)
     %{state| train_deck: new_deck, displayed_trains: display}
   end
 

@@ -36,10 +36,9 @@ defmodule TtrCore.Games.Game do
       type: :worker}
   end
 
-  @spec setup(game(), player_id(), fun(), fun(), fun()) :: :ok | {:error, :not_owner | :not_enough_players | :not_in_unstarted}
-  def setup(game, player_id, train_fun, ticket_fun, display_train_fun) do
-    request = {:setup, player_id, train_fun, ticket_fun, display_train_fun}
-    GenServer.call(game, request, @default_timeout)
+  @spec setup(game(), player_id()) :: :ok | {:error, :not_owner | :not_enough_players | :not_in_unstarted}
+  def setup(game, player_id) do
+    GenServer.call(game, {:setup, player_id}, @default_timeout)
   end
 
   @spec begin(game(), player_id()) :: :ok | {:error, :not_owner | :not_enough_players | :not_in_setup | :tickets_not_selected}
@@ -101,13 +100,13 @@ defmodule TtrCore.Games.Game do
     end
   end
 
-  def handle_call({:setup, player_id, train_fun, ticket_fun, display_train_fun}, _from, state) do
+  def handle_call({:setup, player_id}, _from, state) do
     case State.can_setup?(state, player_id) do
       :ok ->
         new_state = state
-        |> State.deal_trains(train_fun)
-        |> State.deal_tickets(ticket_fun)
-        |> State.display_trains(display_train_fun)
+        |> State.deal_trains()
+        |> State.deal_tickets()
+        |> State.display_trains()
         |> State.setup_game()
 
         {:reply, :ok, new_state}

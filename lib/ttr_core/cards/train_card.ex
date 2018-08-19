@@ -46,7 +46,7 @@ defmodule TtrCore.Cards.TrainCard do
   def draw(deck, 4), do: {:ok, Enum.split(deck, 4)}
   def draw(deck, 2), do: {:ok, Enum.split(deck, 2)}
   def draw(deck, 1), do: {:ok, Enum.split(deck, 1)}
-  def draw(deck, _), do: {:error, :invalid_deal}
+  def draw(_, _), do: {:error, :invalid_deal}
 
   # Private
 

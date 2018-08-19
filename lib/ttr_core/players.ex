@@ -59,6 +59,22 @@ defmodule TtrCore.Players do
   end
 
   @doc """
+  Checks to see if any players are out of stock (2 or less trains)
+  """
+  @spec any_out_of_stock?([Player.t]) :: boolean()
+  def any_out_of_stock?(players) do
+    Enum.any?(players, fn player -> Player.out_of_stock?(player) end)
+  end
+
+  @doc """
+  Finds a player from a list of players by id.
+  """
+  @spec find_by_id([Player.t], user_id()) :: Player.t
+  def find_by_id(players, player_id) do
+    Enum.find(players, fn %{id: id} -> id == player_id end)
+  end
+
+  @doc """
   Registers username with password into the player database.  Returns
   the user id.
 
@@ -138,14 +154,6 @@ defmodule TtrCore.Players do
   """
   @spec reset_selections(Player.t) :: Player.t
   defdelegate reset_selections(player), to: Player
-
-  @doc """
-  Checks to see if any players are out of stock (2 or less trains)
-  """
-  @spec any_out_of_stock?([Player.t]) :: boolean()
-  def any_out_of_stock?(players) do
-    Enum.any?(players, fn player -> Player.out_of_stock?(player) end)
-  end
 
   # Callbacks
 

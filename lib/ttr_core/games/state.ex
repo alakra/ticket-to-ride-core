@@ -116,23 +116,14 @@ defmodule TtrCore.Games.State do
 
   @spec deal_trains(t) :: t
   def deal_trains(%{train_deck: train_deck, players: players} = state) do
-    {remaining_deck, updated_players} =
-      Enum.reduce(players, {train_deck, []}, fn player, {deck, acc} ->
-        {:ok, remainder, player} = Cards.deal_trains(deck, player, 4)
-        {remainder, acc ++ [player]}
-      end)
-
-    %{state | train_deck: remaining_deck, players: updated_players}
+    {remaining, updated} = Cards.deal_initial_trains(train_deck, players)
+    %{state | train_deck: remaining, players: updated}
   end
 
   @spec draw_trains(t, player_id(), count) :: {:ok, t}
   def draw_trains(%{train_deck: deck, players: players} = state, player_id, count) do
-    player = %{trains_selected: selected} = Enum.find(players, fn %{id: id} ->
-      id == player_id
-    end)
-
-    {drawn, remainder} = Enum.split(deck, min(count, 2 - selected))
-    updated_player = Player.add_trains_on_turn(player, drawn)
+    player = Players.find_by_id(players, player_id)
+    {remainder, updated_player} = Cards.draw_trains(deck, player, count)
 
     new_state = state
     |> Map.put(:train_deck, remainder)
@@ -154,7 +145,7 @@ defmodule TtrCore.Games.State do
 
   @spec draw_tickets(t, player_id()) :: t
   def draw_tickets(%{ticket_deck: deck, players: players} = state, player_id) do
-    player = Enum.find(players, fn %{id: id} -> id == player_id end)
+    player = Players.find_by_id(players, player_id)
     {:ok, new_deck, updated_player} = Cards.deal_tickets(deck, player, 3)
 
     %{state | ticket_deck: new_deck}
@@ -163,7 +154,7 @@ defmodule TtrCore.Games.State do
 
   @spec select_tickets(t, player_id(), [TicketCard.t]) :: {:ok, t} | {:error, :invalid_tickets}
   def select_tickets(%{players: players} = state, player_id, tickets) do
-    player = Enum.find(players, fn %{id: id} -> id == player_id end)
+    player = Players.find_by_id(players, player_id)
 
     if player_has_tickets?(player, tickets) do
       {updated_player, removed} = player
@@ -183,7 +174,7 @@ defmodule TtrCore.Games.State do
 
   @spec select_trains(t, player_id(), [TrainCard.t]) :: {:ok, t} | {:error, :invalid_trains}
   def select_trains(%{players: players} = state, player_id, trains) do
-    player = Enum.find(players, fn %{id: id} -> id == player_id end)
+    player = Players.find_by_id(players, player_id)
     selected = Enum.take(trains, 2)
 
     if trains_available?(state, selected) do
@@ -203,9 +194,7 @@ defmodule TtrCore.Games.State do
   def claim_route(%{players: players} = state, player_id, route, train, cost) do
     routes = Board.get_routes() |> Map.values()
 
-    %{trains: trains, pieces: pieces} = player = Enum.find(players, fn %{id: id} ->
-      id == player_id
-    end)
+    %{trains: trains, pieces: pieces} = player = Players.find_by_id(players, player_id)
 
     claimable = Enum.reduce(players, routes, fn %{routes: taken}, acc ->
       acc -- taken
@@ -238,7 +227,7 @@ defmodule TtrCore.Games.State do
 
   @spec generate_context(t, player_id()) :: Context.t
   def generate_context(%{players: players} = state, player_id) do
-    player = Enum.find(players, fn %{id: id} -> id == player_id end)
+    player = Players.find_by_id(players, player_id)
 
     other_players = players
     |> Enum.reject(fn %{id: id} -> id == player_id end)

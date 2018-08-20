@@ -103,13 +103,7 @@ defmodule TtrCore.Games.Game do
   def handle_call({:setup, player_id}, _from, state) do
     case State.can_setup?(state, player_id) do
       :ok ->
-        new_state = state
-        |> State.deal_trains()
-        |> State.deal_tickets()
-        |> State.display_trains()
-        |> State.setup_game()
-
-        {:reply, :ok, new_state}
+        {:reply, :ok, State.setup_game(state)}
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -118,14 +112,10 @@ defmodule TtrCore.Games.Game do
   def handle_call({:begin, player_id}, _from, %{id: game_id} = state) do
     case State.can_begin?(state, player_id) do
       :ok ->
-        new_state = state
-        |> State.choose_starting_player()
-        |> State.start_game()
-
         start_tick = Ticker.get_new_start_tick()
         Registry.register(Turns, :turns, {game_id, start_tick})
 
-        {:reply, :ok, new_state}
+        {:reply, :ok, State.start_game(state)}
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end

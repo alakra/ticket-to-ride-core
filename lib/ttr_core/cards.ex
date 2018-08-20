@@ -1,6 +1,7 @@
 defmodule TtrCore.Cards do
   @moduledoc """
-  Handles all card operations
+  Handles all card operations related to deck management and assigment
+  to players.
   """
 
   alias TtrCore.Cards.{
@@ -12,20 +13,41 @@ defmodule TtrCore.Cards do
   alias TtrCore.Players
   alias TtrCore.Players.Player
 
+  @type card :: TrainCard.t | TicketCard.t
+
   @doc """
-  Returns a new list of train cards all shuffled.
+  Add trains to discard and returned updated discard pile.
   """
-  @spec shuffle_trains() :: [TrainCard.t]
-  def shuffle_trains do
-    TrainCard.shuffle()
+  @spec add_trains_to_discard([TrainCard.t], [TrainCard.t]) :: [TrainCard.t]
+  def add_trains_to_discard(discard, to_remove) do
+    discard ++ to_remove
   end
 
   @doc """
-  Returns a new list of ticket cards all shuffled.
+  Deals 4 train cards to multiple players. Used on initial deal.
+
+  See `deal_trains/3` for  details.
   """
-  @spec shuffle_tickets() :: [TicketCard.t]
-  def shuffle_tickets do
-    Tickets.get_tickets() |> Enum.shuffle()
+  @spec deal_initial_trains([TrainCard.t], [Player.t]) :: {[TrainCard.t], [Player.t]}
+  def deal_initial_trains(train_deck, players) do
+    Enum.reduce(players, {train_deck, []}, fn player, {deck, acc} ->
+      {:ok, remainder, player} = deal_trains(deck, player, 4)
+      {remainder, acc ++ [player]}
+    end)
+  end
+
+  @doc """
+  Deals 3 tickets to each player.
+
+  It returns the remaining tickets and the modified players as a
+  tuple.
+  """
+  @spec deal_tickets([TicketCard.t], [Player.t]) :: {[TicketCard.t], [Player.t]}
+  def deal_tickets(ticket_deck, players) do
+    Enum.reduce(players, {ticket_deck, []}, fn player, {deck, acc} ->
+      {remainder, player} = draw_tickets(deck, player)
+      {remainder, acc ++ [player]}
+    end)
   end
 
   @doc """
@@ -50,16 +72,17 @@ defmodule TtrCore.Cards do
   end
 
   @doc """
-  Deals 4 train cards to multiple players. Used on initial deal.
+  Draws 3 tickets cards for a player and adds them to a selection
+  buffer.
 
-  See `deal_trains/3` for  details.
+  It returns the remaining tickets and the modified player as a
+  tuple.
   """
-  @spec deal_initial_trains([TrainCard.t], [Player.t]) :: {[TrainCard.t], [Player.t]}
-  def deal_initial_trains(train_deck, players) do
-    Enum.reduce(players, {train_deck, []}, fn player, {deck, acc} ->
-      {:ok, remainder, player} = deal_trains(deck, player, 4)
-      {remainder, acc ++ [player]}
-    end)
+  @spec draw_tickets([TicketCard.t], Player.t) :: {[TicketCard.t], Player.t}
+  def draw_tickets(deck, player) do
+    {tickets, new_deck} = TicketCard.draw(deck)
+    updated_player = Players.add_tickets_to_buffer(player, tickets)
+    {new_deck, updated_player}
   end
 
   @doc """
@@ -79,26 +102,57 @@ defmodule TtrCore.Cards do
   end
 
   @doc """
-  Deals tickets cards to a player. Can deal 4 cards on initial game
-  setup or deals 1 to 2 cards during gameplay. Player will choose what
-  to keep.
-
-  It returns the remaining tickets and the modified players as a
-  tuple.
-
-  If you specify more than 3, than an `{:error, :exceeded_maximum}`
-  tuple is returned.
-
+  Checks to see if a set of cards (`deck2`) are a subset of another (`deck1`).
   """
-  @spec deal_tickets([TicketCard.t], Player.t, integer() | :initial) ::
-  {:ok, TicketCard.deck(), Player.t} |
-  {:error, :invalid_draw}
-  def deal_tickets(deck, player, count) do
-    case TicketCard.draw(deck, count) do
-      {:ok, {tickets, new_deck}} ->
-        {:ok, new_deck, Players.add_tickets_to_buffer(player, tickets)}
-      error ->
-        error
-    end
+  @spec has_cards?([card()], [card()]) :: boolean()
+  def has_cards?(deck1, deck2) do
+    set1 = MapSet.new(deck2)
+    set2 = MapSet.new(deck1)
+
+    MapSet.subset?(set1, set2)
+  end
+
+  @doc """
+  Return tickets from a selection to the bottom of the deck of tickets
+  """
+  @spec return_tickets([TicketCard.t], [TicketCard.t]) :: [TicketCard.t]
+  def return_tickets(ticket_deck, to_return) do
+    ticket_deck ++ to_return
+  end
+
+  @doc """
+  Removes a set of trains from the displayed set.
+  """
+  @spec remove_from_display([TrainCard.t], [TrainCard.t]) :: [TrainCard.t]
+  def remove_from_display(displayed, selections) do
+    displayed -- selections
+  end
+
+  @doc """
+  Replenish display with train cards (up to 5).
+
+  Returns a tuple of `{display, train_deck}` where `display` and
+  `train_deck` are both a list of `TrainCard`.
+  """
+  @spec replenish_display([TrainCard.t], [TrainCard.t]) :: {[TrainCard.t], [TrainCard.t]}
+  def replenish_display(displayed, deck) do
+    {additions, new_deck} = Enum.split(deck, 5 - Enum.count(displayed))
+    {displayed ++ additions, new_deck}
+  end
+
+  @doc """
+  Returns a new list of train cards all shuffled.
+  """
+  @spec shuffle_trains() :: [TrainCard.t]
+  def shuffle_trains do
+    TrainCard.shuffle()
+  end
+
+  @doc """
+  Returns a new list of ticket cards all shuffled.
+  """
+  @spec shuffle_tickets() :: [TicketCard.t]
+  def shuffle_tickets do
+    Tickets.get_tickets() |> Enum.shuffle()
   end
 end

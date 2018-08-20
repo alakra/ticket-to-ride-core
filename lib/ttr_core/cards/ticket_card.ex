@@ -13,14 +13,6 @@ defmodule TtrCore.Cards.TicketCard do
   @type remaining :: deck()
   @type selected :: deck()
 
-  @spec draw(deck(), integer()) ::
-  {:ok, {remaining(), selected()}} |
-  {:error, :invalid_draw}
-  def draw(deck, count) do
-    if Enum.member?(0..3, count) do
-      {:ok, Enum.split(deck, count)}
-    else
-      {:error, :invalid_draw}
-    end
-  end
+  @spec draw(deck()) :: {remaining(), selected()}
+  def draw(deck), do: Enum.split(deck, 3)
 end

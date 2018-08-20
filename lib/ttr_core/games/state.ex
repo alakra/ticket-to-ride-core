@@ -85,85 +85,99 @@ defmodule TtrCore.Games.State do
   end
 
   @spec add_player(t, player_id()) :: t
-  def add_player(state, player_id) do
-    %{state | players: [%Player{id: player_id} | state.players]}
+  def add_player(%{players: players} = state, player_id) do
+    %{state | players: Players.add_player(players, player_id)}
   end
 
   @spec remove_player(t, player_id()) :: t
-  def remove_player(state, player_id) do
-    index = Enum.find_index(state.players, &(&1.id == player_id))
-    new_players = List.delete_at(state.players, index)
+  def remove_player(%{players: players} = state, player_id) do
+    updated_players = Players.remove_player(players, player_id)
 
-    %{state | players: new_players}
+    state
+    |> Map.put(:players, updated_players)
     |> transfer_ownership_if_host_left
   end
 
   @spec choose_starting_player(t) :: t
   def choose_starting_player(%{players: players} = state) do
-    %Player{id: chosen_id} = Enum.random(players)
-    %{state | current_player: chosen_id}
+    %Player{id: id} = Players.select_random_player(players)
+    %{state | current_player: id}
   end
 
   @spec setup_game(t) :: t
   def setup_game(state) do
-    %{state | stage: :setup}
+    state
+    |> deal_trains()
+    |> deal_tickets()
+    |> display_trains()
+    |> Map.put(:stage, :setup)
   end
 
   @spec start_game(t) :: t
   def start_game(state) do
-    %{state | stage: :started, stage_meta: []}
+    state
+    |> choose_starting_player()
+    |> Map.put(:stage, :started)
+    |> Map.put(:stage_meta, [])
   end
 
   @spec deal_trains(t) :: t
   def deal_trains(%{train_deck: train_deck, players: players} = state) do
     {remaining, updated} = Cards.deal_initial_trains(train_deck, players)
-    %{state | train_deck: remaining, players: updated}
+
+    state
+    |> Map.put(:train_deck, remaining)
+    |> Map.put(:players, updated)
   end
 
   @spec draw_trains(t, player_id(), count) :: {:ok, t}
   def draw_trains(%{train_deck: deck, players: players} = state, player_id, count) do
     player = Players.find_by_id(players, player_id)
     {remainder, updated_player} = Cards.draw_trains(deck, player, count)
+    updated_players = Players.replace_player(players, updated_player)
 
     new_state = state
     |> Map.put(:train_deck, remainder)
-    |> replace_player(updated_player)
+    |> Map.put(:players, updated_players)
 
     {:ok, new_state}
   end
 
   @spec deal_tickets(t) :: t
-  def deal_tickets(%{ticket_deck: ticket_deck, players: players} = state) do
-    {remaining_deck, updated_players} =
-      Enum.reduce(players, {ticket_deck, []}, fn player, {deck, acc} ->
-        {:ok, remainder, player} = Cards.deal_tickets(deck, player, 3)
-        {remainder, acc ++ [player]}
-      end)
+  def deal_tickets(%{ticket_deck: deck, players: players} = state) do
+    {remaining, updated} = Cards.deal_tickets(deck, players)
 
-    %{state | ticket_deck: remaining_deck, players: updated_players}
+    state
+    |> Map.put(:ticket_deck, remaining)
+    |> Map.put(:players, updated)
   end
 
   @spec draw_tickets(t, player_id()) :: t
   def draw_tickets(%{ticket_deck: deck, players: players} = state, player_id) do
     player = Players.find_by_id(players, player_id)
-    {:ok, new_deck, updated_player} = Cards.deal_tickets(deck, player, 3)
+    {new_deck, updated_player} = Cards.draw_tickets(deck, player)
+    updated_players = Players.replace_player(players, updated_player)
 
-    %{state | ticket_deck: new_deck}
-    |> replace_player(updated_player)
+    state
+    |> Map.put(:ticket_deck, new_deck)
+    |> Map.put(:players, updated_players)
   end
 
   @spec select_tickets(t, player_id(), [TicketCard.t]) :: {:ok, t} | {:error, :invalid_tickets}
-  def select_tickets(%{players: players} = state, player_id, tickets) do
+  def select_tickets(%{ticket_deck: ticket_deck, players: players} = state, player_id, tickets) do
     player = Players.find_by_id(players, player_id)
 
-    if player_has_tickets?(player, tickets) do
+    if Players.has_tickets?(player, tickets) do
       {updated_player, removed} = player
       |> Players.add_tickets(tickets)
       |> Players.remove_tickets_from_buffer(tickets)
 
+      updated_players = Players.replace_player(players, updated_player)
+      updated_tickets = Cards.return_tickets(ticket_deck, removed)
+
       new_state = state
-      |> return_tickets(removed)
-      |> replace_player(updated_player)
+      |> Map.put(:ticket_deck, updated_tickets)
+      |> Map.put(:players, updated_players)
       |> update_meta(player_id)
 
       {:ok, new_state}
@@ -173,16 +187,22 @@ defmodule TtrCore.Games.State do
   end
 
   @spec select_trains(t, player_id(), [TrainCard.t]) :: {:ok, t} | {:error, :invalid_trains}
-  def select_trains(%{players: players} = state, player_id, trains) do
+  def select_trains(%{players: players, train_deck: train_deck, displayed_trains: displayed} = state, player_id, trains) do
     player = Players.find_by_id(players, player_id)
-    selected = Enum.take(trains, 2)
+    selected = Enum.take(trains, 2) # Only grab up to 2 trains, ignore the rest
 
-    if trains_available?(state, selected) do
-      updated_player = Players.add_trains_on_turn(player, selected)
+    if Cards.has_cards?(displayed, selected) do
+      updated_player  = Players.add_trains_on_turn(player, selected)
+      updated_players = Players.replace_player(players, updated_player)
+
+      {new_display, new_deck} = displayed
+      |> Cards.remove_from_display(selected)
+      |> Cards.replenish_display(train_deck)
 
       new_state = state
-      |> replace_player(updated_player)
-      |> remove_and_replace_displayed(selected)
+      |> Map.put(:players, updated_players)
+      |> Map.put(:displayed_trains, new_display)
+      |> Map.put(:train_deck, new_deck)
 
       {:ok, new_state}
     else
@@ -191,16 +211,12 @@ defmodule TtrCore.Games.State do
   end
 
   @spec claim_route(t, player_id(), Route.t, TrainCard.t, integer()) :: {:ok, t} | {:error, :unavailable}
-  def claim_route(%{players: players} = state, player_id, route, train, cost) do
-    routes = Board.get_routes() |> Map.values()
-
+  def claim_route(%{players: players, discard_deck: discard} = state, player_id, route, train, cost) do
     %{trains: trains, pieces: pieces} = player = Players.find_by_id(players, player_id)
 
-    claimable = Enum.reduce(players, routes, fn %{routes: taken}, acc ->
-      acc -- taken
-    end)
+    claimable = Board.get_claimable_routes(players)
 
-    has_stake = Enum.member?(claimable, route)
+    has_stake  = Enum.member?(claimable, route)
     has_trains = Enum.count(trains) >= cost
     has_pieces = pieces >= cost
 
@@ -209,20 +225,17 @@ defmodule TtrCore.Games.State do
       |> Players.add_route(route, cost)
       |> Players.remove_trains(train, cost)
 
+      updated_players = Players.replace_player(players, updated_player)
+      new_discard = Cards.add_trains_to_discard(discard, removed)
+
       new_state = state
-      |> discard_trains(removed)
-      |> replace_player(updated_player)
+      |> Map.put(:discard_deck, new_discard)
+      |> Map.put(:players, updated_players)
 
       {:ok, new_state}
     else
       {:error, :unavailable}
     end
-  end
-
-  @spec display_trains(t) :: t
-  def display_trains(%{train_deck: deck} = state) do
-    {display, new_deck} = Enum.split(deck, 5)
-    %{state| train_deck: new_deck, displayed_trains: display}
   end
 
   @spec generate_context(t, player_id()) :: Context.t
@@ -288,9 +301,11 @@ defmodule TtrCore.Games.State do
   end
 
   # Private
+
   defp move_stage(%{current_player: id, stage: :last_round, stage_meta: meta, players: players} = state) do
     if all_players_played_last_round?(players, meta) do
       {winner_id, score} = calculate_winner(players)
+
       %{state |
         winner_id: winner_id,
         winner_score: score,
@@ -339,6 +354,11 @@ defmodule TtrCore.Games.State do
     %{state | players: Enum.map(players, &(Players.reset_selections(&1)))}
   end
 
+  defp display_trains(%{displayed_trains: displayed, train_deck: deck} = state) do
+    {display, new_deck} = Cards.replenish_display(displayed, deck)
+    %{state| train_deck: new_deck, displayed_trains: display}
+  end
+
   defp transfer_ownership_if_host_left(%{players: players, owner_id: owner_id} = state) do
     result = Enum.any?(players, &(&1.id == owner_id))
 
@@ -352,37 +372,6 @@ defmodule TtrCore.Games.State do
     else
       state
     end
-  end
-
-  defp player_has_tickets?(%{tickets_buffer: buffer}, tickets) do
-    Enum.all?(tickets, fn ticket -> Enum.member?(buffer, ticket) end)
-  end
-
-  defp trains_available?(%{displayed_trains: displayed}, trains) do
-    set1 = MapSet.new(trains)
-    set2 = MapSet.new(displayed)
-
-    MapSet.subset?(set1, set2)
-  end
-
-  defp replace_player(%{players: players} = state, %{id: id} = player) do
-    index = Enum.find_index(players, fn player -> player.id == id end)
-    updated_players = List.replace_at(players, index, player)
-    %{state | players: updated_players}
-  end
-
-  defp remove_and_replace_displayed(%{displayed_trains: trains, train_deck: deck} = state, selected) do
-    remaining = (trains -- selected)
-    {to_display, new_deck} = Enum.split(deck, 5 - Enum.count(remaining))
-    %{state | displayed_trains: to_display ++ remaining, train_deck: new_deck}
-  end
-
-  defp return_tickets(state, tickets) do
-    %{state | ticket_deck: state.ticket_deck ++ tickets}
-  end
-
-  defp discard_trains(%{discard_deck: existing} = state, removed) do
-    %{state | discard_deck: existing ++ removed}
   end
 
   defp update_meta(%{stage: :setup} = state, player_id) do

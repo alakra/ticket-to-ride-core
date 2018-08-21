@@ -61,8 +61,8 @@ defmodule TtrCore.Players do
   Finds a player from a list of players by id.
   """
   @spec find_by_id([Player.t], user_id()) :: Player.t
-  def find_by_id(players, player_id) do
-    Enum.find(players, fn %{id: id} -> id == player_id end)
+  def find_by_id(players, user_id) do
+    Enum.find(players, fn %{id: id} -> id == user_id end)
   end
 
   @doc """
@@ -102,8 +102,8 @@ defmodule TtrCore.Players do
   Remove a player from a list of players.
   """
   @spec remove_player([Player.t], user_id()) :: [Player.t]
-  def remove_player(players, player_id) do
-    index = Enum.find_index(players, &(&1.id == player_id))
+  def remove_player(players, user_id) do
+    index = Enum.find_index(players, &(&1.id == user_id))
     List.delete_at(players, index)
   end
 

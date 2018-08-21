@@ -6,9 +6,10 @@ defmodule TtrCore.Games.SetupTest do
     Players
   }
 
+  alias TtrCore.Mechanics.State
+
   alias TtrCore.Games.{
     Index,
-    State,
     Ticker,
     Turns
   }

@@ -1,33 +1,8 @@
-defmodule TtrCore.Games.State do
+defmodule TtrCore.Mechanics do
   @moduledoc false
 
-  defstruct [
-    id: nil,
-    owner_id: nil,
-    winner_id: :none,
-    winner_score: 0,
-    players: [],
-    routes: [],
-    ticket_deck: [],
-    displayed_trains: [],
-    train_deck: [],
-    discard_deck: [],
-    current_player: nil,
-    stage: :unstarted,
-    stage_meta: [],
-    longest_path_owner: nil
-  ]
-
+  @type cost :: integer
   @type count :: integer
-  @type stage :: :unstarted | :setup | :started | :last_round | :finished
-  @type meta :: list()
-  @type player_id :: binary()
-
-  @type t :: %__MODULE__{
-    current_player: player_id(),
-    stage: stage(),
-    stage_meta: meta()
-  }
 
   alias TtrCore.{
     Board,
@@ -35,74 +10,75 @@ defmodule TtrCore.Games.State do
     Players
   }
 
-  alias TtrCore.Players.Player
-
-  alias TtrCore.Games.Context.OtherPlayer
-  alias TtrCore.Games.{
-    Context
+  alias TtrCore.Mechanics.State
+  alias TtrCore.Players.{
+    Player,
+    User
   }
+  alias TtrCore.Games.Context.OtherPlayer
+  alias TtrCore.Games.Context
 
   # API
 
   @max_players 4
 
-  @spec can_setup?(t, player_id()) :: :ok |
+  @spec can_setup?(State.t, User.id) :: :ok |
     {:error, :not_owner | :not_enough_players | :not_in_unstarted}
-  def can_setup?(%{owner_id: owner_id, players: players} = state, player_id) do
+  def can_setup?(%{owner_id: owner_id, players: players} = state, user_id) do
     []
-    |> validate_owner(owner_id, player_id)
+    |> validate_owner(owner_id, user_id)
     |> validate_enough_players(players)
     |> validate_game_unstarted(state)
     |> handle_result()
   end
 
-  @spec can_begin?(t, player_id()) :: :ok |
+  @spec can_begin?(State.t, User.id) :: :ok |
   {:error, :not_owner | :not_enough_players | :not_in_setup | :tickets_not_selected}
-  def can_begin?(%{owner_id: owner_id, players: players} = state, player_id) do
+  def can_begin?(%{owner_id: owner_id, players: players} = state, user_id) do
     []
     |> validate_tickets_selected(state)
-    |> validate_owner(owner_id, player_id)
+    |> validate_owner(owner_id, user_id)
     |> validate_enough_players(players)
     |> validate_game_in_setup(state)
     |> handle_result()
   end
 
-  @spec can_join?(t, player_id()) :: :ok | {:error, :game_full | :already_joined}
-  def can_join?(%{players: players}, player_id) do
+  @spec can_join?(State.t, User.id) :: :ok | {:error, :game_full | :already_joined}
+  def can_join?(%{players: players}, user_id) do
     []
     |> validate_not_full(players)
-    |> validate_no_duplicate_players(players, player_id)
+    |> validate_no_duplicate_players(players, user_id)
     |> handle_result()
   end
 
-  @spec is_joined?(t, player_id()) :: :ok | {:error, :not_joined}
-  def is_joined?(%{players: players}, player_id) do
+  @spec is_joined?(State.t, User.id) :: :ok | {:error, :not_joined}
+  def is_joined?(%{players: players}, user_id) do
     []
-    |> validate_player_joined(players, player_id)
+    |> validate_player_joined(players, user_id)
     |> handle_result()
   end
 
-  @spec add_player(t, player_id()) :: t
-  def add_player(%{players: players} = state, player_id) do
-    %{state | players: Players.add_player(players, player_id)}
+  @spec add_player(State.t, User.id) :: State.t
+  def add_player(%{players: players} = state, user_id) do
+    %{state | players: Players.add_player(players, user_id)}
   end
 
-  @spec remove_player(t, player_id()) :: t
-  def remove_player(%{players: players} = state, player_id) do
-    updated_players = Players.remove_player(players, player_id)
+  @spec remove_player(State.t, User.id) :: State.t
+  def remove_player(%{players: players} = state, user_id) do
+    updated_players = Players.remove_player(players, user_id)
 
     state
     |> Map.put(:players, updated_players)
     |> transfer_ownership_if_host_left
   end
 
-  @spec choose_starting_player(t) :: t
+  @spec choose_starting_player(State.t) :: State.t
   def choose_starting_player(%{players: players} = state) do
     %Player{id: id} = Players.select_random_player(players)
     %{state | current_player: id}
   end
 
-  @spec setup_game(t) :: t
+  @spec setup_game(State.t) :: State.t
   def setup_game(state) do
     state
     |> deal_trains()
@@ -111,7 +87,7 @@ defmodule TtrCore.Games.State do
     |> Map.put(:stage, :setup)
   end
 
-  @spec start_game(t) :: t
+  @spec start_game(State.t) :: State.t
   def start_game(state) do
     state
     |> choose_starting_player()
@@ -119,7 +95,7 @@ defmodule TtrCore.Games.State do
     |> Map.put(:stage_meta, [])
   end
 
-  @spec deal_trains(t) :: t
+  @spec deal_trains(State.t) :: State.t
   def deal_trains(%{train_deck: train_deck, players: players} = state) do
     {remaining, updated} = Cards.deal_initial_trains(train_deck, players)
 
@@ -128,9 +104,9 @@ defmodule TtrCore.Games.State do
     |> Map.put(:players, updated)
   end
 
-  @spec draw_trains(t, player_id(), count) :: {:ok, t}
-  def draw_trains(%{train_deck: deck, players: players} = state, player_id, count) do
-    player = Players.find_by_id(players, player_id)
+  @spec draw_trains(State.t, User.id, count()) :: {:ok, State.t}
+  def draw_trains(%{train_deck: deck, players: players} = state, user_id, count) do
+    player = Players.find_by_id(players, user_id)
     {remainder, updated_player} = Cards.draw_trains(deck, player, count)
     updated_players = Players.replace_player(players, updated_player)
 
@@ -141,7 +117,7 @@ defmodule TtrCore.Games.State do
     {:ok, new_state}
   end
 
-  @spec deal_tickets(t) :: t
+  @spec deal_tickets(State.t) :: State.t
   def deal_tickets(%{ticket_deck: deck, players: players} = state) do
     {remaining, updated} = Cards.deal_tickets(deck, players)
 
@@ -150,9 +126,9 @@ defmodule TtrCore.Games.State do
     |> Map.put(:players, updated)
   end
 
-  @spec draw_tickets(t, player_id()) :: t
-  def draw_tickets(%{ticket_deck: deck, players: players} = state, player_id) do
-    player = Players.find_by_id(players, player_id)
+  @spec draw_tickets(State.t, User.id) :: State.t
+  def draw_tickets(%{ticket_deck: deck, players: players} = state, user_id) do
+    player = Players.find_by_id(players, user_id)
     {new_deck, updated_player} = Cards.draw_tickets(deck, player)
     updated_players = Players.replace_player(players, updated_player)
 
@@ -161,9 +137,10 @@ defmodule TtrCore.Games.State do
     |> Map.put(:players, updated_players)
   end
 
-  @spec select_tickets(t, player_id(), [TicketCard.t]) :: {:ok, t} | {:error, :invalid_tickets}
-  def select_tickets(%{ticket_deck: ticket_deck, players: players} = state, player_id, tickets) do
-    player = Players.find_by_id(players, player_id)
+  @spec select_tickets(State.t, User.id, [TicketCard.t]) ::
+  {:ok, State.t} | {:error, :invalid_tickets}
+  def select_tickets(%{ticket_deck: ticket_deck, players: players} = state, user_id, tickets) do
+    player = Players.find_by_id(players, user_id)
 
     if Players.has_tickets?(player, tickets) do
       {updated_player, removed} = player
@@ -176,7 +153,7 @@ defmodule TtrCore.Games.State do
       new_state = state
       |> Map.put(:ticket_deck, updated_tickets)
       |> Map.put(:players, updated_players)
-      |> update_meta(player_id)
+      |> update_meta(user_id)
 
       {:ok, new_state}
     else
@@ -184,9 +161,10 @@ defmodule TtrCore.Games.State do
     end
   end
 
-  @spec select_trains(t, player_id(), [TrainCard.t]) :: {:ok, t} | {:error, :invalid_trains}
-  def select_trains(%{players: players, train_deck: train_deck, displayed_trains: displayed} = state, player_id, trains) do
-    player = Players.find_by_id(players, player_id)
+  @spec select_trains(State.t, User.id, [TrainCard.t]) ::
+  {:ok, State.t} | {:error, :invalid_trains}
+  def select_trains(%{players: players, train_deck: train_deck, displayed_trains: displayed} = state, user_id, trains) do
+    player = Players.find_by_id(players, user_id)
     selected = Enum.take(trains, 2) # Only grab up to 2 trains, ignore the rest
 
     if Cards.has_cards?(displayed, selected) do
@@ -208,9 +186,10 @@ defmodule TtrCore.Games.State do
     end
   end
 
-  @spec claim_route(t, player_id(), Route.t, TrainCard.t, integer()) :: {:ok, t} | {:error, :unavailable}
-  def claim_route(%{players: players, discard_deck: discard} = state, player_id, route, train, cost) do
-    %{trains: trains, pieces: pieces} = player = Players.find_by_id(players, player_id)
+  @spec claim_route(State.t, User.id, Route.t, TrainCard.t, cost()) ::
+  {:ok, State.t} | {:error, :unavailable}
+  def claim_route(%{players: players, discard_deck: discard} = state, user_id, route, train, cost) do
+    %{trains: trains, pieces: pieces} = player = Players.find_by_id(players, user_id)
 
     claimable = Board.get_claimable_routes(players)
 
@@ -236,12 +215,12 @@ defmodule TtrCore.Games.State do
     end
   end
 
-  @spec generate_context(t, player_id()) :: Context.t
-  def generate_context(%{players: players} = state, player_id) do
-    player = Players.find_by_id(players, player_id)
+  @spec generate_context(State.t, User.id) :: Context.t
+  def generate_context(%{players: players} = state, user_id) do
+    player = Players.find_by_id(players, user_id)
 
     other_players = players
-    |> Enum.reject(fn %{id: id} -> id == player_id end)
+    |> Enum.reject(fn %{id: id} -> id == user_id end)
     |> Enum.map(fn player ->
       %OtherPlayer{
         name: player.name,
@@ -272,16 +251,16 @@ defmodule TtrCore.Games.State do
     }
   end
 
-  @spec end_turn(t, player_id()) :: {:ok, t} | {:error, :not_turn}
-  def end_turn(%{current_player: current_id} = state, player_id) do
-    if player_id == current_id do
+  @spec end_turn(State.t, User.id()) :: {:ok, State.t} | {:error, :not_turn}
+  def end_turn(%{current_player: current_id} = state, user_id) do
+    if user_id == current_id do
       {:ok, force_end_turn(state)}
     else
       {:error, :not_turn}
     end
   end
 
-  @spec force_end_turn(t) :: t
+  @spec force_end_turn(State.t) :: State.t
   def force_end_turn(%{players: players, current_player: current_id} = state) do
     count = Enum.count(players)
     index = Enum.find_index(players, fn %{id: id} -> id == current_id end)
@@ -372,17 +351,17 @@ defmodule TtrCore.Games.State do
     end
   end
 
-  defp update_meta(%{stage: :setup} = state, player_id) do
-    if Enum.member?(state.stage_meta, player_id) do
+  defp update_meta(%{stage: :setup} = state, user_id) do
+    if Enum.member?(state.stage_meta, user_id) do
       state
     else
-      %{state | stage_meta: [player_id | state.stage_meta]}
+      %{state | stage_meta: [user_id | state.stage_meta]}
     end
   end
   defp update_meta(%{stage: _} = state, _), do: state
 
-  defp validate_owner(errors, owner_id, player_id) do
-    if owner_id == player_id do
+  defp validate_owner(errors, owner_id, user_id) do
+    if owner_id == user_id do
       errors
     else
       [{:error, :not_owner} | errors]
@@ -431,16 +410,16 @@ defmodule TtrCore.Games.State do
     end
   end
 
-  defp validate_no_duplicate_players(errors, players, player_id) do
-    if Enum.any?(players, fn %{id: stored_id} -> stored_id == player_id end) do
+  defp validate_no_duplicate_players(errors, players, user_id) do
+    if Enum.any?(players, fn %{id: stored_id} -> stored_id == user_id end) do
       [{:error, :already_joined} | errors]
     else
       errors
     end
   end
 
-  defp validate_player_joined(errors, players, player_id) do
-    if Enum.any?(players, fn %{id: stored_id} -> stored_id == player_id end) do
+  defp validate_player_joined(errors, players, user_id) do
+    if Enum.any?(players, fn %{id: stored_id} -> stored_id == user_id end) do
       errors
     else
       [{:error, :not_joined} | errors]

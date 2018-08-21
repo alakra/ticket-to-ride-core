@@ -6,15 +6,17 @@ defmodule TtrCore.Games.Game do
   alias TtrCore.Games.{
     Action,
     Index,
-    State,
     Ticker,
     Turns
   }
 
+  alias TtrCore.Mechanics
+  alias TtrCore.Mechanics.State
+  alias TtrCore.Players.User
+
   require Logger
 
   @type reason :: binary()
-  @type player_id :: binary()
   @type game() :: pid()
   @type id :: binary()
 
@@ -22,7 +24,7 @@ defmodule TtrCore.Games.Game do
 
   # API
 
-  @spec start_link(State.t) :: {:ok, pid()}
+  @spec start_link(State.t) :: GenServer.on_start()
   def start_link(%State{id: id} = state) do
     name = {:via, Registry, {Index, id}}
     GenServer.start_link(__MODULE__, state, name: name)
@@ -36,29 +38,31 @@ defmodule TtrCore.Games.Game do
       type: :worker}
   end
 
-  @spec setup(game(), player_id()) :: :ok | {:error, :not_owner | :not_enough_players | :not_in_unstarted}
-  def setup(game, player_id) do
-    GenServer.call(game, {:setup, player_id}, @default_timeout)
+  @spec setup(game(), User.id) ::
+  :ok | {:error, :not_owner | :not_enough_players | :not_in_unstarted}
+  def setup(game, user_id) do
+    GenServer.call(game, {:setup, user_id}, @default_timeout)
   end
 
-  @spec begin(game(), player_id()) :: :ok | {:error, :not_owner | :not_enough_players | :not_in_setup | :tickets_not_selected}
-  def begin(game, player_id) do
-    GenServer.call(game, {:begin, player_id}, @default_timeout)
+  @spec begin(game(), User.id) ::
+  :ok | {:error, :not_owner | :not_enough_players | :not_in_setup | :tickets_not_selected}
+  def begin(game, user_id) do
+    GenServer.call(game, {:begin, user_id}, @default_timeout)
   end
 
-  @spec join(game(), player_id()) :: :ok | {:error, :game_full | :already_joined}
-  def join(game, player_id) do
-    GenServer.call(game, {:join, player_id}, @default_timeout)
+  @spec join(game(), User.id) :: :ok | {:error, :game_full | :already_joined}
+  def join(game, user_id) do
+    GenServer.call(game, {:join, user_id}, @default_timeout)
   end
 
-  @spec leave(game(), player_id()) :: :ok | {:error, :not_joined}
-  def leave(game, player_id) do
-    GenServer.call(game, {:leave, player_id}, @default_timeout)
+  @spec leave(game(), User.id) :: :ok | {:error, :not_joined}
+  def leave(game, user_id) do
+    GenServer.call(game, {:leave, user_id}, @default_timeout)
   end
 
-  @spec perform(game(), player_id(), Action.t) :: :ok | {:error, reason()}
-  def perform(game, player_id, action) do
-    GenServer.call(game, {:perform, player_id, action}, @default_timeout)
+  @spec perform(game(), User.id, Action.t) :: :ok | {:error, reason()}
+  def perform(game, user_id, action) do
+    GenServer.call(game, {:perform, user_id, action}, @default_timeout)
   end
 
   @spec force_end_turn(game()) :: :ok
@@ -66,9 +70,9 @@ defmodule TtrCore.Games.Game do
     GenServer.cast(game, :force_end_turn)
   end
 
-  @spec get_context(game(), player_id()) :: {:ok, Context.t} | {:error, :not_joined}
-  def get_context(game, player_id) do
-    GenServer.call(game, {:get, :context, player_id}, @default_timeout)
+  @spec get_context(game(), User.id) :: {:ok, Context.t} | {:error, :not_joined}
+  def get_context(game, user_id) do
+    GenServer.call(game, {:get, :context, user_id}, @default_timeout)
   end
 
   @spec get_state(game()) :: State.t
@@ -79,89 +83,89 @@ defmodule TtrCore.Games.Game do
   # Callbacks
 
   def init(%{owner_id: owner_id} = state) do
-    {:ok, State.add_player(state, owner_id)}
+    {:ok, Mechanics.add_player(state, owner_id)}
   end
 
-  def handle_call({:join, player_id}, _from, state) do
-    case State.can_join?(state, player_id) do
-      :ok -> {:reply, :ok, State.add_player(state, player_id)}
+  def handle_call({:join, user_id}, _from, state) do
+    case Mechanics.can_join?(state, user_id) do
+      :ok -> {:reply, :ok, Mechanics.add_player(state, user_id)}
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
   end
 
-  def handle_call({:leave, player_id}, _from, state) do
-    case State.is_joined?(state, player_id) do
+  def handle_call({:leave, user_id}, _from, state) do
+    case Mechanics.is_joined?(state, user_id) do
       :ok ->
         state
-        |> State.remove_player(player_id)
+        |> Mechanics.remove_player(user_id)
         |> stop_if_no_more_players
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
   end
 
-  def handle_call({:setup, player_id}, _from, state) do
-    case State.can_setup?(state, player_id) do
+  def handle_call({:setup, user_id}, _from, state) do
+    case Mechanics.can_setup?(state, user_id) do
       :ok ->
-        {:reply, :ok, State.setup_game(state)}
+        {:reply, :ok, Mechanics.setup_game(state)}
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
   end
 
-  def handle_call({:begin, player_id}, _from, %{id: game_id} = state) do
-    case State.can_begin?(state, player_id) do
+  def handle_call({:begin, user_id}, _from, %{id: game_id} = state) do
+    case Mechanics.can_begin?(state, user_id) do
       :ok ->
         start_tick = Ticker.get_new_start_tick()
         Registry.register(Turns, :turns, {game_id, start_tick})
 
-        {:reply, :ok, State.start_game(state)}
+        {:reply, :ok, Mechanics.start_game(state)}
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
   end
 
-  def handle_call({:perform, player_id, {:select_tickets, tickets}}, _from, state) do
-    case State.select_tickets(state, player_id, tickets) do
+  def handle_call({:perform, user_id, {:select_tickets, tickets}}, _from, state) do
+    case Mechanics.select_tickets(state, user_id, tickets) do
       {:ok, new_state} -> {:reply, :ok, new_state}
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
   end
 
-  def handle_call({:perform, player_id, :draw_tickets}, _from, state) do
-    {:reply, :ok, State.draw_tickets(state, player_id)}
+  def handle_call({:perform, user_id, :draw_tickets}, _from, state) do
+    {:reply, :ok, Mechanics.draw_tickets(state, user_id)}
   end
 
-  def handle_call({:perform, player_id, {:select_trains, trains}}, _from, state) do
-    case State.select_trains(state, player_id, trains) do
+  def handle_call({:perform, user_id, {:select_trains, trains}}, _from, state) do
+    case Mechanics.select_trains(state, user_id, trains) do
       {:ok, new_state} -> {:reply, :ok, new_state}
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
   end
 
-  def handle_call({:perform, player_id, {:draw_trains, count}}, _from, state) do
-    {:ok, new_state} = State.draw_trains(state, player_id, count)
+  def handle_call({:perform, user_id, {:draw_trains, count}}, _from, state) do
+    {:ok, new_state} = Mechanics.draw_trains(state, user_id, count)
     {:reply, :ok, new_state}
   end
 
-  def handle_call({:perform, player_id, {:claim_route, route, train_card, cost}}, _from, state) do
-    case State.claim_route(state, player_id, route, train_card, cost) do
+  def handle_call({:perform, user_id, {:claim_route, route, train_card, cost}}, _from, state) do
+    case Mechanics.claim_route(state, user_id, route, train_card, cost) do
       {:ok, new_state} -> {:reply, :ok, new_state}
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
   end
 
-  def handle_call({:perform, player_id, :end_turn}, _from, state) do
-    case State.end_turn(state, player_id) do
+  def handle_call({:perform, user_id, :end_turn}, _from, state) do
+    case Mechanics.end_turn(state, user_id) do
       {:ok, new_state} -> {:reply, :ok, new_state}
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
   end
 
-  def handle_call({:get, :context, player_id}, _from, state) do
-    case State.is_joined?(state, player_id) do
+  def handle_call({:get, :context, user_id}, _from, state) do
+    case Mechanics.is_joined?(state, user_id) do
       :ok ->
-        {:reply, {:ok, State.generate_context(state, player_id)}, state}
+        {:reply, {:ok, Mechanics.generate_context(state, user_id)}, state}
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -172,7 +176,7 @@ defmodule TtrCore.Games.Game do
   end
 
   def handle_cast(:force_end_turn, state) do
-    {:noreply, State.force_end_turn(state)}
+    {:noreply, Mechanics.force_end_turn(state)}
   end
 
   def terminate(reason, state) do

@@ -4,13 +4,18 @@ defmodule TtrCore.Games do
   """
   use DynamicSupervisor
 
-  alias TtrCore.Players
-  alias TtrCore.Cards
+  alias TtrCore.{
+    Cards,
+    Mechanics,
+    Players
+  }
+
+  alias TtrCore.Mechanics.State
+
   alias TtrCore.Games.{
     Action,
     Game,
-    Index,
-    State
+    Index
   }
 
   require Logger
@@ -247,7 +252,7 @@ defmodule TtrCore.Games do
   @doc """
   Returns complete game state.
   """
-  @spec get_state(game_id()) :: {:ok, State.t} | {:error, :not_found}
+  @spec get_state(game_id()) :: {:ok, Mechanics.t} | {:error, :not_found}
   def get_state(game_id) do
     case Registry.lookup(Index, game_id) do
       [{pid, _}] -> {:ok, Game.get_state(pid)}

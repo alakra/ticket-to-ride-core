@@ -2,8 +2,8 @@ defmodule TtrCore.Games.Context do
   @moduledoc false
 
   defstruct [
-    id: nil,
-    game_id: nil,
+    id: "",
+    game_id: "",
     name: "",
     stage: :unstarted,
     tickets: [],
@@ -11,13 +11,13 @@ defmodule TtrCore.Games.Context do
     trains: [],
     routes: [],
     pieces: 45,
-    train_deck: nil,
+    train_deck: 0,
     trains_selected: 0,
-    ticket_deck: nil,
+    ticket_deck: [],
     displayed_trains: [],
-    current_player: nil,
+    current_player: "",
     other_players: [],
-    longest_path_owner: nil
+    longest_path_owner: ""
   ]
 
   alias TtrCore.Board.Route

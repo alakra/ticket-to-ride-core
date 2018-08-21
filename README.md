@@ -152,8 +152,8 @@ Games.perform(game_id, user_id_b, {:select_tickets, tickets_b})
 ##### Find out who goes first
 
 ```elixir
-{:ok, context_a} = Games.get_context(id, user_id_a)
-{:ok, context_b} = Games.get_context(id, user_id_b)
+{:ok, context_a} = Games.get_context(game_id, user_id_a)
+{:ok, context_b} = Games.get_context(game_id, user_id_b)
 
 starting_context = Enum.find([context_a, context_b], fn c ->
     c.current_player == c.id
@@ -172,20 +172,15 @@ Also, make sure you get the latest context after each operation:
 ##### Claim a route
 
 ```elixir
-routes = Board.get_routes() |> Map.values()
-routes = (routes -- context_a.routes) -- context_b.routes
+contexts = [context_a, context_b]
+claimed = Enum.flat_map(contexts, fn %{routes: routes} -> routes end)
+routes = Board.get_claimable_routes(claimed)
 
 # Take a look at your routes, then make sure selections
 
-train = :coal
+train = hd(context_a.trains)
 cost = 5
-
-route_to_claim = %Route{
-  to: Atlanta,
-  from: Miami,
-  distance: 5,
-  train: :coal
-}
+route_to_claim = {Seattle, Vancouver, 1, :any}
 
 :ok = Games.perform(game_id, user_id_a, {:claim_route, route_to_claim, train, cost})
 ```

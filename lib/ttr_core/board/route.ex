@@ -1,14 +1,13 @@
 defmodule TtrCore.Board.Route do
   @moduledoc false
 
-  defstruct [:from, :to, :distance, :train]
-
   alias TtrCore.Cards.TrainCard
 
-  @type t :: %__MODULE__{
-    from: atom(),
-    to: atom(),
-    distance: integer(),
-    train: TrainCard.t | :any
-  }
+  @type city :: atom
+  @type from :: city()
+  @type to :: city()
+  @type distance :: integer()
+  @type train :: TrainCard.t | :any
+
+  @type t :: {from(), to(), distance(), train()}
 end

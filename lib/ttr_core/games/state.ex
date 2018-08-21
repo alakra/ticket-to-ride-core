@@ -330,7 +330,7 @@ defmodule TtrCore.Games.State do
 
   defp calculate_score(%{routes: routes}) do
     routes
-    |> Enum.map(&(calculate_route_score(&1.distance)))
+    |> Enum.map(fn {_, _, distance, _} -> calculate_route_score(distance) end)
     |> Enum.sum()
   end
 

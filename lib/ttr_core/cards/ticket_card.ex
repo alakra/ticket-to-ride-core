@@ -1,13 +1,11 @@
 defmodule TtrCore.Cards.TicketCard do
   @moduledoc false
 
-  defstruct [:from, :to, :value]
+  @type from :: atom()
+  @type to :: atom()
+  @type value :: integer()
 
-  @type t :: %__MODULE__{
-    from: atom(),
-    to: atom(),
-    value: integer()
-  }
+  @type t :: {from(), to(), value()}
 
   @type deck :: [t]
   @type remaining :: deck()

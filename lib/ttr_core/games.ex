@@ -27,7 +27,7 @@ defmodule TtrCore.Games do
   @doc """
   Starts the `TtrCore.Games` supervisor.
   """
-  @spec start_link :: {:ok, pid()}
+  @spec start_link :: Supervisor.on_start()
   def start_link do
     DynamicSupervisor.start_link(__MODULE__, [], [name: __MODULE__])
   end

@@ -6,8 +6,7 @@ defmodule TtrCore.Cards.Conductor do
   defmacro __using__(_opts) do
     quote do
       import unquote(__MODULE__)
-      Module.register_attribute __MODULE__, :tickets, accumulate: false, persist: true
-      Module.put_attribute __MODULE__, :tickets, []
+      Module.register_attribute __MODULE__, :tickets, accumulate: true, persist: true
       @before_compile unquote(__MODULE__)
     end
   end
@@ -15,18 +14,17 @@ defmodule TtrCore.Cards.Conductor do
   # API
 
   defmacro defticket(from, args \\ []) do
-    quote do
-      opts     = unquote(args)
-      from     = unquote(from)
-      to       = opts[:to]
-      value = opts[:value]
+    to    = args[:to]
+    value = args[:value]
 
-      @tickets [%TicketCard{from: from, to: to, value: value} | @tickets]
+    quote do
+      @tickets {unquote(from), unquote(to), unquote(value)}
     end
   end
 
   defmacro __before_compile__(_env) do
     quote do
+      @spec get_tickets() :: [TicketCard.t]
       def get_tickets, do: @tickets
     end
   end

@@ -1,7 +1,5 @@
 defmodule TtrCore.Games.State do
-  # TODO: Change players to a map with user id as the key
-
-#  @moduledoc false
+  @moduledoc false
 
   defstruct [
     id: nil,

@@ -8,11 +8,10 @@ defmodule TtrCoreTest do
   }
 
   alias TtrCore.{
+    Board,
     Games,
     Players
   }
-
-  alias TtrCore.Board
 
   setup do
     start_supervised({Registry, [keys: :unique, name: Index]})

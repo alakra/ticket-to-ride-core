@@ -94,13 +94,12 @@ defmodule TtrCore.Games.Game do
   end
 
   def handle_call({:leave, user_id}, _from, state) do
-    case Mechanics.is_joined?(state, user_id) do
-      :ok ->
-        state
-        |> Mechanics.remove_player(user_id)
-        |> stop_if_no_more_players
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
+    if Mechanics.is_joined?(state, user_id) do
+      state
+      |> Mechanics.remove_player(user_id)
+      |> stop_if_no_more_players
+    else
+      {:reply, {:error, :not_joined}, state}
     end
   end
 
@@ -163,11 +162,10 @@ defmodule TtrCore.Games.Game do
   end
 
   def handle_call({:get, :context, user_id}, _from, state) do
-    case Mechanics.is_joined?(state, user_id) do
-      :ok ->
-        {:reply, {:ok, Mechanics.generate_context(state, user_id)}, state}
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
+    if Mechanics.is_joined?(state, user_id) do
+      {:reply, {:ok, Mechanics.generate_context(state, user_id)}, state}
+    else
+      {:reply, {:error, :nor_joined}, state}
     end
   end
 

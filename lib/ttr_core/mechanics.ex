@@ -1,5 +1,7 @@
 defmodule TtrCore.Mechanics do
-  @moduledoc false
+  @moduledoc """
+  Game play mechanics, rules and state transformer.
+  """
 
   @type cost :: integer
   @type count :: integer
@@ -22,6 +24,20 @@ defmodule TtrCore.Mechanics do
 
   @max_players 4
 
+  @doc """
+  Checks to see if the state allows going to the `setup` stage.
+
+  Returns `:ok`, if it can.
+
+  Returns `{:error, :not_owner}` if the user id used is not the owner
+  requesting the stage change.
+
+  Returns `{:error, :not_enough_players}` if the game does not have
+  more than 1 player joined.
+
+  Returns `{:error, :not_in_unstarted}` if the game is not in the
+  `unstarted` stage.
+  """
   @spec can_setup?(State.t, User.id) :: :ok |
     {:error, :not_owner | :not_enough_players | :not_in_unstarted}
   def can_setup?(%{owner_id: owner_id, players: players} = state, user_id) do
@@ -32,6 +48,23 @@ defmodule TtrCore.Mechanics do
     |> handle_result()
   end
 
+  @doc """
+  Checks to see if the state allows going to the `begin` stage.
+
+  Returns `:ok`, if it can.
+
+  Returns `{:error, :not_owner}` if the user id used is not the owner
+  requesting the stage change.
+
+  Returns `{:error, :not_enough_players}` if the game does not have
+  more than 1 player joined.
+
+  Returns `{:error, :not_in_setup}` if the game is not in the
+  `unstarted` stage.
+
+  Returns `{:error, :tickets_not_selected}` if any of the players have
+  not selected their initial tickets.
+  """
   @spec can_begin?(State.t, User.id) :: :ok |
   {:error, :not_owner | :not_enough_players | :not_in_setup | :tickets_not_selected}
   def can_begin?(%{owner_id: owner_id, players: players} = state, user_id) do
@@ -43,6 +76,17 @@ defmodule TtrCore.Mechanics do
     |> handle_result()
   end
 
+  @doc """
+  Checks to see if a player can join.
+
+  Returns `:ok` if it is possible.
+
+  Returns `{:error, :game_full}` if the game has reach the maximum
+  number of players (4).
+
+  Returns `{:error, :already_joined}` if the player has already
+  joined.
+  """
   @spec can_join?(State.t, User.id) :: :ok | {:error, :game_full | :already_joined}
   def can_join?(%{players: players}, user_id) do
     []
@@ -51,18 +95,26 @@ defmodule TtrCore.Mechanics do
     |> handle_result()
   end
 
-  @spec is_joined?(State.t, User.id) :: :ok | {:error, :not_joined}
+  @doc """
+  Checks to see if a player has already joined and returns a boolean.
+  """
+  @spec is_joined?(State.t, User.id) :: boolean()
   def is_joined?(%{players: players}, user_id) do
-    []
-    |> validate_player_joined(players, user_id)
-    |> handle_result()
+    Enum.any?(players, fn %{id: stored_id} -> stored_id == user_id end)
   end
 
+  @doc """
+  Adds a player to the state.
+  """
   @spec add_player(State.t, User.id) :: State.t
   def add_player(%{players: players} = state, user_id) do
     %{state | players: Players.add_player(players, user_id)}
   end
 
+  @doc """
+  Removes a player from the state.  If the player is the owner, then
+  another player is automatically assigned as the owner.
+  """
   @spec remove_player(State.t, User.id) :: State.t
   def remove_player(%{players: players} = state, user_id) do
     updated_players = Players.remove_player(players, user_id)
@@ -72,12 +124,23 @@ defmodule TtrCore.Mechanics do
     |> transfer_ownership_if_host_left
   end
 
+  @doc """
+  Randomly chooses starting player.
+  """
   @spec choose_starting_player(State.t) :: State.t
   def choose_starting_player(%{players: players} = state) do
     %Player{id: id} = Players.select_random_player(players)
     %{state | current_player: id}
   end
 
+  @doc """
+  Transforms game state to a `setup` stage. This stage will:
+
+  * Deal initial trains to players (4 to each player)
+  * Deal tickets for selections to players (3 to each player)
+  * Displays 5 trains face up for all user to select during normal
+    gameplay
+  """
   @spec setup_game(State.t) :: State.t
   def setup_game(state) do
     state
@@ -87,6 +150,11 @@ defmodule TtrCore.Mechanics do
     |> Map.put(:stage, :setup)
   end
 
+  @doc """
+  Transforms game state to a `started` stage. This stage will:
+
+  * Choose a starting player
+  """
   @spec start_game(State.t) :: State.t
   def start_game(state) do
     state
@@ -95,6 +163,10 @@ defmodule TtrCore.Mechanics do
     |> Map.put(:stage_meta, [])
   end
 
+  @doc """
+  Deals trains to all players during the `setup` stage or a normal turn
+  (`started` stage). Called by `setup_game/1`.
+  """
   @spec deal_trains(State.t) :: State.t
   def deal_trains(%{train_deck: train_deck, players: players} = state) do
     {remaining, updated} = Cards.deal_initial_trains(train_deck, players)
@@ -104,6 +176,9 @@ defmodule TtrCore.Mechanics do
     |> Map.put(:players, updated)
   end
 
+  @doc """
+  Draws trains to a player from the a train deck. Can draw 1 or 2 cards.
+  """
   @spec draw_trains(State.t, User.id, count()) :: {:ok, State.t}
   def draw_trains(%{train_deck: deck, players: players} = state, user_id, count) do
     player = Players.find_by_id(players, user_id)
@@ -117,6 +192,10 @@ defmodule TtrCore.Mechanics do
     {:ok, new_state}
   end
 
+  @doc """
+  Deals tickets to all players during the `setup` stage. Called by
+  `setup_game/1`.
+  """
   @spec deal_tickets(State.t) :: State.t
   def deal_tickets(%{ticket_deck: deck, players: players} = state) do
     {remaining, updated} = Cards.deal_tickets(deck, players)
@@ -126,6 +205,9 @@ defmodule TtrCore.Mechanics do
     |> Map.put(:players, updated)
   end
 
+  @doc """
+  Draw tickets from deck to a player for selections.
+  """
   @spec draw_tickets(State.t, User.id) :: State.t
   def draw_tickets(%{ticket_deck: deck, players: players} = state, user_id) do
     player = Players.find_by_id(players, user_id)
@@ -137,6 +219,14 @@ defmodule TtrCore.Mechanics do
     |> Map.put(:players, updated_players)
   end
 
+  @doc """
+  Select tickets that were drawn into buffer for a player.
+
+  Returns `{:ok, state}` if selections were successful.
+
+  Returns `{:error, :invalid_tickets}` if the tickets selected were
+  not available to be chosen.
+  """
   @spec select_tickets(State.t, User.id, [TicketCard.t]) ::
   {:ok, State.t} | {:error, :invalid_tickets}
   def select_tickets(%{ticket_deck: ticket_deck, players: players} = state, user_id, tickets) do
@@ -161,6 +251,14 @@ defmodule TtrCore.Mechanics do
     end
   end
 
+  @doc """
+  Select trains from the display deck and replenish train display.
+
+  Returns `{:ok, state}` if selections were successful.
+
+  Returns `{:error, :invalid_trains}` if the trains selected were
+  not available to be chosen.
+  """
   @spec select_trains(State.t, User.id, [TrainCard.t]) ::
   {:ok, State.t} | {:error, :invalid_trains}
   def select_trains(%{players: players, train_deck: train_deck, displayed_trains: displayed} = state, user_id, trains) do
@@ -186,6 +284,14 @@ defmodule TtrCore.Mechanics do
     end
   end
 
+  @doc """
+  Claims a route for a player and pays out the cost in trains.
+
+  Returns `{:ok, state}` if succesful.
+
+  Returns `{:error, :unavailable}` if the route is not eligible to be
+  claimed.
+  """
   @spec claim_route(State.t, User.id, Route.t, TrainCard.t, cost()) ::
   {:ok, State.t} | {:error, :unavailable}
   def claim_route(%{players: players, discard_deck: discard} = state, user_id, route, train, cost) do
@@ -215,6 +321,11 @@ defmodule TtrCore.Mechanics do
     end
   end
 
+  @doc """
+  Generates a player's context from the game state.  This includes the
+  view a player has of other players (not including their secrets or
+  the details of decks).
+  """
   @spec generate_context(State.t, User.id) :: Context.t
   def generate_context(%{players: players} = state, user_id) do
     player = Players.find_by_id(players, user_id)
@@ -251,6 +362,14 @@ defmodule TtrCore.Mechanics do
     }
   end
 
+  @doc """
+  End a player's turn.
+
+  Returns `{:ok, state}` if successful.
+
+  Returns `{:error, :not_turn}` if it is not the user id of the
+  current player.
+  """
   @spec end_turn(State.t, User.id()) :: {:ok, State.t} | {:error, :not_turn}
   def end_turn(%{current_player: current_id} = state, user_id) do
     if user_id == current_id do
@@ -260,6 +379,10 @@ defmodule TtrCore.Mechanics do
     end
   end
 
+  @doc """
+  Force the end of a turn regardless of player identification. Used by
+  the `Ticker` timer.
+  """
   @spec force_end_turn(State.t) :: State.t
   def force_end_turn(%{players: players, current_player: current_id} = state) do
     count = Enum.count(players)
@@ -415,14 +538,6 @@ defmodule TtrCore.Mechanics do
       [{:error, :already_joined} | errors]
     else
       errors
-    end
-  end
-
-  defp validate_player_joined(errors, players, user_id) do
-    if Enum.any?(players, fn %{id: stored_id} -> stored_id == user_id end) do
-      errors
-    else
-      [{:error, :not_joined} | errors]
     end
   end
 

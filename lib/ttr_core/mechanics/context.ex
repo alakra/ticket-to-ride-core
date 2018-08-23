@@ -1,5 +1,13 @@
-defmodule TtrCore.Games.Context do
+defmodule TtrCore.Mechanics.Context do
   @moduledoc false
+
+  alias TtrCore.Mechanics.OtherPlayer
+  alias TtrCore.Board.Route
+  alias TtrCore.Games
+  alias TtrCore.Cards.{
+    TicketCard,
+    TrainCard
+  }
 
   defstruct [
     id: "",
@@ -20,34 +28,7 @@ defmodule TtrCore.Games.Context do
     longest_path_owner: ""
   ]
 
-  alias TtrCore.Board.Route
-  alias TtrCore.Games
-  alias TtrCore.Cards.{
-    TicketCard,
-    TrainCard
-  }
-
-  defmodule OtherPlayer do
-    @moduledoc false
-
-    defstruct [
-      name: "",
-      tickets: 0,
-      trains: 0,
-      pieces: 0,
-      routes: [],
-    ]
-  end
-
   @type count :: integer()
-
-  @type other_player :: %OtherPlayer{
-    name: String.t,
-    tickets: count(),
-    trains: count(),
-    pieces: count(),
-    routes: [Route.t]
-  }
 
   @type t :: %__MODULE__{
     id: Games.user_id(),
@@ -62,7 +43,7 @@ defmodule TtrCore.Games.Context do
     ticket_deck: count(),
     displayed_trains: [TrainCard.t],
     current_player: Game.user_id(),
-    other_players: [other_player()],
+    other_players: [OtherPlayer.t],
     longest_path_owner: Games.user_id() | nil
   }
 end

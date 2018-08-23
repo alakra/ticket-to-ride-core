@@ -12,13 +12,16 @@ defmodule TtrCore.Mechanics do
     Players
   }
 
-  alias TtrCore.Mechanics.State
+  alias TtrCore.Mechanics.{
+    Context,
+    OtherPlayer,
+    State
+  }
+
   alias TtrCore.Players.{
     Player,
     User
   }
-  alias TtrCore.Games.Context.OtherPlayer
-  alias TtrCore.Games.Context
 
   # API
 

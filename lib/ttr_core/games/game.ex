@@ -11,7 +11,11 @@ defmodule TtrCore.Games.Game do
   }
 
   alias TtrCore.Mechanics
-  alias TtrCore.Mechanics.State
+  alias TtrCore.Mechanics.{
+    Context,
+    State
+  }
+
   alias TtrCore.Players.User
 
   require Logger

@@ -5,9 +5,6 @@ defmodule TtrCore.Board do
 
   alias TtrCore.Board.Routes
 
-  @type to :: atom()
-  @type from :: atom()
-
   @doc """
   Get all routes
   """
@@ -15,8 +12,9 @@ defmodule TtrCore.Board do
   defdelegate get_routes(), to: Routes
 
   @doc """
-  Get a specific route by specifying the origin and the destination.
+  Gets all claimable routes by looking at what has not already been
+  claimed.
   """
-  @spec get_route(from(), to()) :: Route.t
-  defdelegate get_route(from, to), to: Routes
+  @spec get_claimable_routes([Route.t]) :: [Route.t]
+  defdelegate get_claimable_routes(claimed), to: Routes
 end

@@ -73,8 +73,9 @@ defmodule TtrCoreTest do
         c.current_player == c.id
       end)
 
-      routes = Board.get_routes() |> Map.values()
-      routes = (routes -- context_a.routes) -- context_b.routes
+      routes = [context_a, context_b]
+      |> Enum.flat_map(fn %{routes: routes} -> routes end)
+      |> Board.get_claimable_routes()
 
       %{context: context, finish_turn: false}
       |> claim_route(routes)
@@ -91,7 +92,7 @@ defmodule TtrCoreTest do
   defp claim_route(%{context: %{pieces: pieces}} = status, _routes) when pieces <= 2, do: status
   defp claim_route(%{context: %{id: id, game_id: game_id, trains: cards}} = status, routes) do
     {route_to_claim, train, cost} = Enum.reduce_while(routes, {:no_route, :no_train, 0}, fn
-      %{train: :any, distance: distance} = route, acc ->
+      {_, _, distance, :any} = route, acc ->
         # 1. Groups every held card into card -> count
         # 2. Compares each card count to the distance to see if there is at least enough to claim this route
         result = cards
@@ -104,7 +105,8 @@ defmodule TtrCoreTest do
         else
           {:cont, acc}
         end
-      %{train: train, distance: distance} = route, acc ->
+
+      {_, _, distance, train} = route, acc ->
         # 1. Finds every card held that matches the train route
         # 2. Counts them
         # 3. Compares the count to the distance to see if there is at least enough to claim this route

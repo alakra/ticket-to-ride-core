@@ -7,9 +7,11 @@ defmodule TtrCore.Players.User do
     :password
   ]
 
+  @type id :: binary()
+
   @type t :: %__MODULE__{
-    id: String.t,
+    id: id(),
     username: String.t,
-    password: String.t,
+    password: binary(),
   }
 end

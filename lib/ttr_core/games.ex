@@ -4,13 +4,18 @@ defmodule TtrCore.Games do
   """
   use DynamicSupervisor
 
-  alias TtrCore.Players
-  alias TtrCore.Cards
+  alias TtrCore.{
+    Cards,
+    Mechanics,
+    Players
+  }
+
+  alias TtrCore.Mechanics.State
+
   alias TtrCore.Games.{
     Action,
     Game,
-    Index,
-    State
+    Index
   }
 
   require Logger
@@ -27,7 +32,7 @@ defmodule TtrCore.Games do
   @doc """
   Starts the `TtrCore.Games` supervisor.
   """
-  @spec start_link :: {:ok, pid()}
+  @spec start_link :: Supervisor.on_start()
   def start_link do
     DynamicSupervisor.start_link(__MODULE__, [], [name: __MODULE__])
   end
@@ -102,11 +107,7 @@ defmodule TtrCore.Games do
     case Registry.lookup(Index, game_id) do
       [{pid, _}] ->
         Logger.info("setup game:#{game_id}")
-
-        Game.setup(pid, user_id,
-          fn train_deck, player -> Cards.deal_trains(train_deck, player, 4) end,
-          fn ticket_deck, player -> Cards.deal_tickets(ticket_deck, player, 3) end,
-          fn train_deck -> Enum.split(train_deck, 5) end)
+        Game.setup(pid, user_id)
       _ ->
         {:error, :not_found}
     end
@@ -251,7 +252,7 @@ defmodule TtrCore.Games do
   @doc """
   Returns complete game state.
   """
-  @spec get_state(game_id()) :: {:ok, State.t} | {:error, :not_found}
+  @spec get_state(game_id()) :: {:ok, Mechanics.t} | {:error, :not_found}
   def get_state(game_id) do
     case Registry.lookup(Index, game_id) do
       [{pid, _}] -> {:ok, Game.get_state(pid)}

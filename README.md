@@ -11,32 +11,33 @@ yet. When this message disappears, then it'll be done. :)
 ### Why?
 
 There are so many implementations of Ticket To Ride. Why build another
-one?
+one? For me, it was about finding the limits of a new programming
+language with a familiar board game.
 
-Board games have a wide scope of features when they get implemented as
-software because they exercise most of the logic and state
-management that we programmers know we need to experience to really
-get a feel for the breadth of a computer language.
+Board games, in general, are good candidates for implementations
+because their feature sets can really push the limits of a language's
+data structures, expressiveness and ability to model a domain in a
+hierarchy of code.
 
-Good board games have the following features:
+Most board games have the following features:
 
 * They have to mantain state.
 * They have physical domain which makes them easier to reason about.
 * They have rules.
-* They have (usually) more than 1 player.
+* They (usually) have more than 1 player.
 * They have secrets.
 * They have limited effects due to randomness.
 
-In addition to the above, I chose Ticket to Ride because it also
-requires calculations on a graph.
+But he real draw for me was to build a proof-of-concept game server
+that could manage the state of thousands of turn-based games on a
+single server without going to great lengths to configure the
+server.
 
-My real interest was to build a proof-of-concept game server that
-could manage the state of thousands of turn-based games on a single
-server without going to great lengths to configure the server.
-
-I wanted to do this without thinking about networking and
-transport-layer security, so I focused on state management and scaling
-the game to over 10k concurrent games.
+The Erlang BEAM is supposed to be really good at solving this sort of
+problem and I wanted to leverage that strength. I wanted to do this
+without thinking about networking and transport-layer security, so I
+focused on state management and scaling the game to over 10k
+concurrent games.
 
 ### What I Have Learned From This Project
 
@@ -46,25 +47,20 @@ core gameplay and managing state.
 
 I learned that:
 
-* Domain-Driven APIs are so much easier to debug when you constrain
+* Domain-Driven APIs are much easier to debug when you constrain
   yourself to contexts (see [Phoenix Contexts](https://hexdocs.pm/phoenix/contexts.html#content))
-
 * `typespecs` will tell you how simple or insane your APIs are in
   Elixir. Write them for every public function.
-
 * Not all domains are physical. New ones will appear as you see
   consistent patterns on data manipulation.
-
 * Defining documentation on modules that are in the first-level of the
   domain is really important. It's even more important to actually
   render them using `mix docs` and expand the `Functions` drop-down
   for every top-level domain module. It reveals a lot about what you
   can do with a module. Verb-Noun structure (e.g. `get_card/2`) is
   simple and clear.
-
 * Good tests make a foundation not for correctness, but for
   identifying what effects your code changes will produce.
-
 * Not to return `nil` from functions. I won't do it. I will always try
   to return something unambiguous.
 
@@ -73,10 +69,10 @@ I learned that:
 * Only five top-level domains: `Board`, `Cards`, `Games`, `Mechanics` and `Players`
 * User registration (username and password)
 * Separation of player contexts vs complete state
-* Ownership tied to first player to join a new game. Will transfer to next player if first player leaves, etc.
+* Ownership is tied to the first player to join a new game. Will transfer to next player if first player leaves, etc.
 * Session management (provided concept for future implementations over a network to validate actions before they hitting the core the API)
 * Can scale just over 10k concurrent games on a small virtual machine (1 cpu, 1 GB ram)
-* Single-time sliced timer for all turns (turns are limited to 30 seconds)
+* Single-time sliced timer for all turns (turns are limited to 60 seconds)
 * Randomly chooses which player goes first
 
 ## Non-Features
@@ -156,8 +152,8 @@ Games.perform(game_id, user_id_b, {:select_tickets, tickets_b})
 ##### Find out who goes first
 
 ```elixir
-{:ok, context_a} = Games.get_context(id, user_id_a)
-{:ok, context_b} = Games.get_context(id, user_id_b)
+{:ok, context_a} = Games.get_context(game_id, user_id_a)
+{:ok, context_b} = Games.get_context(game_id, user_id_b)
 
 starting_context = Enum.find([context_a, context_b], fn c ->
     c.current_player == c.id
@@ -176,20 +172,15 @@ Also, make sure you get the latest context after each operation:
 ##### Claim a route
 
 ```elixir
-routes = Board.get_routes() |> Map.values()
-routes = (routes -- context_a.routes) -- context_b.routes
+contexts = [context_a, context_b]
+claimed = Enum.flat_map(contexts, fn %{routes: routes} -> routes end)
+routes = Board.get_claimable_routes(claimed)
 
 # Take a look at your routes, then make sure selections
 
-train = :coal
+train = hd(context_a.trains)
 cost = 5
-
-route_to_claim = %Route{
-  to: Atlanta,
-  from: Miami,
-  distance: 5,
-  train: :coal
-}
+route_to_claim = {Seattle, Vancouver, 1, :any}
 
 :ok = Games.perform(game_id, user_id_a, {:claim_route, route_to_claim, train, cost})
 ```

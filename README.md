@@ -28,7 +28,7 @@ Most board games have the following features:
 * They have secrets.
 * They have limited effects due to randomness.
 
-But he real draw for me was to build a proof-of-concept game server
+But the real draw for me was to build a proof-of-concept game server
 that could manage the state of thousands of turn-based games on a
 single server without going to great lengths to configure the
 server.
@@ -70,7 +70,7 @@ I learned that:
 * User registration (username and password)
 * Separation of player contexts vs complete state
 * Ownership is tied to the first player to join a new game. Will transfer to next player if first player leaves, etc.
-* Session management (provided concept for future implementations over a network to validate actions before they hitting the core the API)
+* Session management (provided concept for future implementations over a network to validate actions before they hit the core API)
 * Can scale just over 10k concurrent games on a small virtual machine (1 cpu, 1 GB ram)
 * Single-time sliced timer for all turns (turns are limited to 60 seconds)
 * Randomly chooses which player goes first

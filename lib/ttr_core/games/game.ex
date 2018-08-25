@@ -24,8 +24,6 @@ defmodule TtrCore.Games.Game do
   @type game() :: pid()
   @type id :: binary()
 
-  @default_timeout 30_000
-
   # API
 
   @spec start_link(State.t) :: GenServer.on_start()
@@ -45,28 +43,28 @@ defmodule TtrCore.Games.Game do
   @spec setup(game(), User.id) ::
   :ok | {:error, :not_owner | :not_enough_players | :not_in_unstarted}
   def setup(game, user_id) do
-    GenServer.call(game, {:setup, user_id}, @default_timeout)
+    GenServer.call(game, {:setup, user_id})
   end
 
   @spec begin(game(), User.id) ::
   :ok | {:error, :not_owner | :not_enough_players | :not_in_setup | :tickets_not_selected}
   def begin(game, user_id) do
-    GenServer.call(game, {:begin, user_id}, @default_timeout)
+    GenServer.call(game, {:begin, user_id})
   end
 
   @spec join(game(), User.id) :: :ok | {:error, :game_full | :already_joined}
   def join(game, user_id) do
-    GenServer.call(game, {:join, user_id}, @default_timeout)
+    GenServer.call(game, {:join, user_id})
   end
 
   @spec leave(game(), User.id) :: :ok | {:error, :not_joined}
   def leave(game, user_id) do
-    GenServer.call(game, {:leave, user_id}, @default_timeout)
+    GenServer.call(game, {:leave, user_id})
   end
 
   @spec perform(game(), User.id, Action.t) :: :ok | {:error, reason()}
   def perform(game, user_id, action) do
-    GenServer.call(game, {:perform, user_id, action}, @default_timeout)
+    GenServer.call(game, {:perform, user_id, action})
   end
 
   @spec force_end_turn(game()) :: :ok
@@ -76,12 +74,12 @@ defmodule TtrCore.Games.Game do
 
   @spec get_context(game(), User.id) :: {:ok, Context.t} | {:error, :not_joined}
   def get_context(game, user_id) do
-    GenServer.call(game, {:get, :context, user_id}, @default_timeout)
+    GenServer.call(game, {:get, :context, user_id})
   end
 
   @spec get_state(game()) :: State.t
   def get_state(game) do
-    GenServer.call(game, {:get, :state}, @default_timeout)
+    GenServer.call(game, {:get, :state})
   end
 
   # Callbacks

@@ -1,9 +1,14 @@
 defmodule TtrCore.Mechanics.State do
+  @moduledoc false
+
+  alias TtrCore.Mechanics.Score
+
   defstruct [
     id: nil,
     owner_id: nil,
     winner_id: :none,
     winner_score: 0,
+    scores: [],
     players: [],
     routes: [],
     ticket_deck: [],
@@ -23,6 +28,7 @@ defmodule TtrCore.Mechanics.State do
   @type t :: %__MODULE__{
     current_player: user_id(),
     stage: stage(),
-    stage_meta: meta()
+    stage_meta: meta(),
+    scores: [Score.t]
   }
 end

@@ -15,6 +15,7 @@ defmodule TtrCore.Mechanics do
   alias TtrCore.Mechanics.{
     Context,
     OtherPlayer,
+    Score,
     State
   }
 
@@ -407,11 +408,28 @@ defmodule TtrCore.Mechanics do
 
   defp move_stage(%{current_player: id, stage: :last_round, stage_meta: meta, players: players} = state) do
     if all_players_played_last_round?(players, meta) do
-      {winner_id, score} = calculate_winner(players)
+      # Get baseline scores for every player
+      scores = Enum.map(players, &(calculate_score(&1)))
+
+      # Get longest route length from player pool
+      {_, _, longest} = Enum.max_by(scores, fn {_, _, length} -> length end)
+
+      # Separate all players that scored the longest length route from everyone else
+      {high_scorers, other} = Enum.split_with(scores, fn {_, _, length} ->
+        length == longest
+      end)
+
+      # Apply bonus points to high scorers and calculate final scores
+      achievers = Enum.map(high_scorers, fn {id, score, _} -> {id, score + 10} end)
+      finals = achievers ++ other
+
+      # Calculate winner
+      {winner_id, score} = Enum.max_by(finals, fn {_, score} -> score end)
 
       %{state |
         winner_id: winner_id,
         winner_score: score,
+        scores: finals,
         stage: :finished,
         stage_meta: []}
     else
@@ -427,24 +445,7 @@ defmodule TtrCore.Mechanics do
   end
   defp move_stage(%{stage: _} = state), do: state
 
-  defp calculate_winner(players) do
-    players
-    |> Enum.map(&({&1.id, calculate_score(&1)}))
-    |> Enum.max_by(fn {_, score} -> score end)
-  end
-
-  defp calculate_score(%{routes: routes}) do
-    routes
-    |> Enum.map(fn {_, _, distance, _} -> calculate_route_score(distance) end)
-    |> Enum.sum()
-  end
-
-  defp calculate_route_score(6), do: 15
-  defp calculate_route_score(5), do: 10
-  defp calculate_route_score(4), do: 7
-  defp calculate_route_score(3), do: 4
-  defp calculate_route_score(2), do: 2
-  defp calculate_route_score(1), do: 1
+  defp calculate_score(player), do: Score.calculate(player)
 
   defp all_players_played_last_round?(players, meta) do
     ids = players |> Enum.map(&(&1.id)) |> Enum.sort()

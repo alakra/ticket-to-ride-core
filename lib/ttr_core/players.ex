@@ -70,7 +70,7 @@ defmodule TtrCore.Players do
   sessions).
   """
   @spec get_active_users() :: [User.t]
-  def get_active_users() do
+  def get_active_users do
     fn session -> session.user_id end
     |> Session.find_active()
     |> DB.find_users()

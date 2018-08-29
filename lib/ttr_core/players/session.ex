@@ -80,7 +80,7 @@ defmodule TtrCore.Players.Session do
     }
   end
 
-  defp generate_expiration() do
+  defp generate_expiration do
     DateTime.utc_now()
     |> DateTime.to_naive()
     |> NaiveDateTime.add(60 * 60 * 24, :second)

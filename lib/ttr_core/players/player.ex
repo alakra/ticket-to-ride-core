@@ -45,7 +45,7 @@ defmodule TtrCore.Players.Player do
 
   @spec remove_trains(t, TrainCard.t, integer) :: t
   def remove_trains(%{trains: existing} = player, train, count) do
-    remaining = existing -- (Stream.cycle([train]) |> Enum.take(count))
+    remaining = existing -- ([train] |> Stream.cycle() |> Enum.take(count))
     updated_player = %{player | trains: remaining}
     {updated_player, remaining}
   end

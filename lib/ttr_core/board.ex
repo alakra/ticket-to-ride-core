@@ -9,7 +9,7 @@ defmodule TtrCore.Board do
   Get all routes
   """
   @spec get_routes() :: [Route.t]
-  defdelegate get_routes(), to: Routes
+  defdelegate get_routes, to: Routes
 
   @doc """
   Gets all claimable routes by looking at what has not already been

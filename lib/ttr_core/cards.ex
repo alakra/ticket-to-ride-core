@@ -5,8 +5,8 @@ defmodule TtrCore.Cards do
   """
 
   alias TtrCore.Cards.{
-    Tickets,
     TicketCard,
+    Tickets,
     TrainCard
   }
 

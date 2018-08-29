@@ -10,11 +10,11 @@ defmodule TtrCore.Mechanics.ScoreTest do
 
   describe "calculate/1" do
     test "calculation of longest route", %{player: player} do
-      assert {"123", _, _, 30} = Score.calculate(player)
+      assert {"123", _, _, 24} = Score.calculate(player)
     end
 
     test "calculation of total routes score", %{player: player} do
-      assert {"123", 45, _, _} = Score.calculate(player)
+      assert {"123", 44, _, _} = Score.calculate(player)
     end
 
     test "calculation of tickets score", %{player: player} do
@@ -48,7 +48,6 @@ defmodule TtrCore.Mechanics.ScoreTest do
     {Boston, New.York, 1, :coal},
     {Charleston, Raleigh, 2, :any},
     {Chicago, St.Louis, 2, :caboose},
-    {Dallas, Houston, 1, :any},
     {Dallas, Houston, 1, :any},
     {Dallas, Little.Rock, 2, :any},
     {Dallas, Oklahoma.City, 2, :any},

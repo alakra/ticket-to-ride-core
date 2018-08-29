@@ -7,11 +7,11 @@ defmodule TtrCore.Mechanics.Score do
   @type route_score :: score
   @type ticket_score :: score
   @type longest_route_length :: integer
-  @type t :: {Player.user_id, score}
+  @type t :: {Player.user_id, route_score, ticket_score, longest_route_length}
 
   # API
 
-  @spec calculate(Player.t) :: {Player.user_id, route_score, ticket_score, longest_route_length}
+  @spec calculate(Player.t) :: t
   def calculate(%{id: id, routes: routes, tickets: tickets}) do
     longest_route = calculate_longest_route(routes)
     route_score   = calculate_route(routes)
@@ -60,6 +60,26 @@ defmodule TtrCore.Mechanics.Score do
   end
 
   defp calculate_longest_route(routes) do
-    0
+    routes
+    |> Enum.map(fn {_, _, value, _} = route ->
+      calculate_longest(route, routes -- [route], value)
+    end)
+    |> Enum.max(fn -> 0 end)
+  end
+
+  defp calculate_longest(route, routes, acc) do
+    connections = Enum.filter(routes, fn next -> is_connected?(route, next) end)
+
+    if Enum.empty?(routes) or Enum.empty?(connections) do
+      acc
+    else
+      connections
+      |> Enum.map(fn {_, _, value, _} = next -> calculate_longest(next, routes -- [next], acc + value) end)
+      |> Enum.max(fn -> 0 end)
+    end
+  end
+
+  defp is_connected?({from_a, to_a, _, _}, {from_b, to_b, _, _}) do
+    from_a == from_b || from_a == to_b || to_a == from_b || to_a == to_b
   end
 end

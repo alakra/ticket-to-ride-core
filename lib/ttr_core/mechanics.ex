@@ -415,7 +415,7 @@ defmodule TtrCore.Mechanics do
       {_, _, _, longest} = Enum.max_by(scores, fn {_, _, _, length} -> length end)
 
       # Separate all players that scored the longest length route from everyone else
-      {high_scorers, other} = Enum.split_with(scores, fn {_, _, _, length} ->
+      {high_scorers, remainder} = Enum.split_with(scores, fn {_, _, _, length} ->
         length == longest
       end)
 
@@ -424,7 +424,11 @@ defmodule TtrCore.Mechanics do
         {id, ticket_score + route_score + 10}
       end)
 
-      finals = achievers ++ other
+      others = Enum.map(remainder, fn {id, route_score, ticket_score, _} ->
+        {id, ticket_score + route_score}
+      end)
+
+      finals = achievers ++ others
 
       # Calculate winner
       {winner_id, score} = Enum.max_by(finals, fn {_, score} -> score end)

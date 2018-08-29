@@ -60,7 +60,7 @@ defmodule TtrCoreTest do
 
     if stage == :finished do
       assert state.winner_id
-      assert state.winner_score > 0
+      assert is_integer(state.winner_score)
 
       assert state.players
       |> Enum.map(&(Enum.count(&1.tickets)))

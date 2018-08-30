@@ -70,7 +70,7 @@ defmodule TtrCore.Players do
   sessions).
   """
   @spec get_active_users() :: [User.t]
-  def get_active_users() do
+  def get_active_users do
     fn session -> session.user_id end
     |> Session.find_active()
     |> DB.find_users()
@@ -115,6 +115,14 @@ defmodule TtrCore.Players do
   def replace_player(players, %{id: id} = player) do
     index = Enum.find_index(players, fn player -> player.id == id end)
     List.replace_at(players, index, player)
+  end
+
+  @doc """
+  Returns a list of all player's routes combined.
+  """
+  @spec get_claimed_routes([Player.t]) :: [Route.t]
+  def get_claimed_routes(players) do
+    Enum.flat_map(players, fn %{routes: routes} -> routes end)
   end
 
   @doc """

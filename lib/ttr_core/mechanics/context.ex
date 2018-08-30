@@ -1,13 +1,15 @@
 defmodule TtrCore.Mechanics.Context do
   @moduledoc false
 
-  alias TtrCore.Mechanics.OtherPlayer
   alias TtrCore.Board.Route
-  alias TtrCore.Games
+
   alias TtrCore.Cards.{
     TicketCard,
     TrainCard
   }
+
+  alias TtrCore.Games
+  alias TtrCore.Mechanics.OtherPlayer
 
   defstruct [
     id: "",

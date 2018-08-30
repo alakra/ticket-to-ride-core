@@ -3,8 +3,8 @@ defmodule TtrCore.Games.Action do
 
   alias TtrCore.Board.Route
   alias TtrCore.Cards.{
-    TrainCard,
-    TicketCard
+    TicketCard,
+    TrainCard
   }
 
   @type count() :: integer()

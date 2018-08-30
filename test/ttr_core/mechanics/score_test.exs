@@ -68,7 +68,7 @@ defmodule TtrCore.Mechanics.ScoreTest do
     {Seattle, Vancouver, 1, :any}
   ]
 
-  defp create_player() do
+  defp create_player do
     %Player{id: "123", routes: @routes, tickets: @tickets}
   end
 end

@@ -31,15 +31,15 @@ defmodule TtrCore.Mixfile do
   defp deps do
     [
       # All
-      {:observer_cli, "~> 1.3"},
       {:uuid, "~> 1.1"},
 
       # Test
       {:excoveralls, "~> 0.9", only: :test},
 
       # Development
-      {:dialyzex, "~> 1.1", only: :dev},
       {:benchee, "~> 0.13", only: :dev},
+      {:credo, "~> 0.10.0", only: :dev},
+      {:dialyzex, "~> 1.1", only: :dev},
       {:ex_doc, "~> 0.18", only: :dev, runtime: false},
     ]
   end

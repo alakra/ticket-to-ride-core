@@ -29,7 +29,15 @@ defmodule TtrCore.Board.Router do
       def get_routes, do: @routes
 
       @spec get_claimable_routes([Route.t]) :: [Route.t]
-      def get_claimable_routes(claimed), do: @routes -- claimed
+      def get_claimable_routes(claims) do
+        Enum.reduce(@routes, [], fn {from, to, _, _} = route, acc ->
+          found = Enum.find(claims, false, fn {source, destination, _, _} ->
+            from == source and to == destination
+          end)
+
+          if found, do: acc, else: [route|acc]
+        end)
+      end
     end
   end
 end

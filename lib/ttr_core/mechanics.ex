@@ -301,7 +301,8 @@ defmodule TtrCore.Mechanics do
   def claim_route(%{players: players, discard_deck: discard} = state, user_id, route, train, cost) do
     %{trains: trains, pieces: pieces} = player = Players.find_by_id(players, user_id)
 
-    claimable = Board.get_claimable_routes(players)
+    claimed   = Players.get_claimed_routes(players)
+    claimable = Board.get_claimable_routes(claimed)
 
     has_stake  = Enum.member?(claimable, route)
     has_trains = Enum.count(trains) >= cost

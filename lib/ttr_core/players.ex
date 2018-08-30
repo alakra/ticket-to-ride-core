@@ -118,6 +118,14 @@ defmodule TtrCore.Players do
   end
 
   @doc """
+  Returns a list of all player's routes combined.
+  """
+  @spec get_claimed_routes([Player.t]) :: [Route.t]
+  def get_claimed_routes(players) do
+    Enum.flat_map(players, fn %{routes: routes} -> routes end)
+  end
+
+  @doc """
   Registers username with password into the player database.  Returns
   the user id.
 

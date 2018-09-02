@@ -28,16 +28,14 @@ defmodule TtrCore.Board.Router do
       @spec get_routes() :: [Route.t]
       def get_routes, do: @routes
 
-      @spec get_claimable_routes([Route.t]) :: [Route.t]
-      def get_claimable_routes(claims) do
-        Enum.reduce(@routes, [], fn {from, to, _, _} = route, acc ->
-          found = Enum.find(claims, false, fn {source, destination, _, _} ->
-            from == source and to == destination
-          end)
-
-          if found, do: acc, else: [route|acc]
-        end)
+      @spec get_claimable_routes([Route.t], [Route.t], integer) :: [Route.t]
+      def get_claimable_routes(claims, specific, player_count) do
+        (normalize_routes_for_players(@routes, player_count) -- claims) -- specific
       end
     end
   end
+
+  @doc false
+  def normalize_routes_for_players(routes, count) when count > 3, do: routes
+  def normalize_routes_for_players(routes, _), do: Enum.dedup(routes)
 end

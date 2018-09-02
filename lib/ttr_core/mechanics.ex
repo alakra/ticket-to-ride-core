@@ -302,7 +302,7 @@ defmodule TtrCore.Mechanics do
     %{trains: trains, pieces: pieces} = player = Players.find_by_id(players, user_id)
 
     claimed   = Players.get_claimed_routes(players)
-    claimable = Board.get_claimable_routes(claimed)
+    claimable = Board.get_claimable_routes(claimed, player, Enum.count(players))
 
     has_stake  = Enum.member?(claimable, route)
     has_trains = Enum.count(trains) >= cost

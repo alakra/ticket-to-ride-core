@@ -73,9 +73,11 @@ defmodule TtrCoreTest do
         c.current_player == c.id
       end)
 
+      player = Players.find_by_id(state.players, context.id)
+
       routes = [context_a, context_b]
       |> Enum.flat_map(fn %{routes: routes} -> routes end)
-      |> Board.get_claimable_routes()
+      |> Board.get_claimable_routes(player, Enum.count(state.players))
 
       %{context: context, finish_turn: false}
       |> claim_route(routes)

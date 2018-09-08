@@ -210,7 +210,8 @@ defmodule TtrCore.Mechanics do
   end
 
   @doc """
-  Draw tickets from deck to a player for selections.
+  Draw tickets from deck to a player for selections. Always draws 3
+  and places them in the players selection buffer.
   """
   @spec draw_tickets(State.t, User.id) :: State.t
   def draw_tickets(%{ticket_deck: deck, players: players} = state, user_id) do

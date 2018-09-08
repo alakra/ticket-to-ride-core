@@ -139,10 +139,10 @@ alias TtrCore.Mechanics.Context
 :ok = Games.setup(game_id, user_id_a)
 
 {:ok, %{tickets_buffer: tickets_a}} = Games.get_context(game_id, user_id_a)
-:ok = Games.perform(game_id, user_id_a, {:select_tickets, tickets_a})
+:ok = Games.select_tickets(game_id, user_id_a, tickets_a)
 
 {:ok, %{tickets_buffer: tickets_b}} = Games.get_context(game_id, user_id_b)
-Games.perform(game_id, user_id_b, {:select_tickets, tickets_b})
+Games.select_tickets(game_id, user_id_b, tickets_b)
 
 :ok = Games.begin(game_id, user_id_a)
 ```
@@ -182,7 +182,7 @@ train = hd(context_a.trains)
 cost = 5
 route_to_claim = {Seattle, Vancouver, 1, :any}
 
-:ok = Games.perform(game_id, user_id_a, {:claim_route, route_to_claim, train, cost})
+:ok = Games.claim_route(game_id, user_id_a, route_to_claim, train, cost)
 ```
 
 ##### Select trains from the display
@@ -196,7 +196,7 @@ route_to_claim = {Seattle, Vancouver, 1, :any}
 
 # Select the first train
 
-:ok = Games.perform(game_id, user_id_a, {:select_trains, [first]})
+:ok = Games.select_trains(game_id, user_id_a, [first])
 ```
 
 ##### Draw trains from the deck
@@ -207,21 +207,21 @@ route_to_claim = {Seattle, Vancouver, 1, :any}
 # Draw a train if there are trains in the deck (can draw up to 2)
 
 if number_in_deck > 0 do
-  :ok = Games.perform(game_id, user_id_a, {:draw_trains, 1})
+  :ok = Games.draw_trains(game_id, user_id_a, 1)
 end
 ```
 
 ##### Draw tickets from the deck
 
 ```elixir
-:ok = Games.perform(game_id, user_id_a, :draw_tickets)
+:ok = Games.draw_tickets(game_id, user_id_a)
 ```
 
 ##### Select tickets that you have drawn
 
 ```elixir
 %Context{tickets_buffer: buffer} = context_a
-:ok = Games.perform(game_id, user_id_a, {:select_tickets, buffer})
+:ok = Games.select_tickets(game_id, user_id_a, buffer)
 ```
 
 #### Ending the Game

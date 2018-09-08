@@ -42,10 +42,10 @@ defmodule TtrCoreTest do
       assert :ok = Games.setup(id, session_a.user_id)
 
       assert {:ok, %{tickets_buffer: tickets_a}} = Games.get_context(id, session_a.user_id)
-      assert :ok = Games.perform(id, session_a.user_id, {:select_tickets, tickets_a})
+      assert :ok = Games.select_tickets(id, session_a.user_id, tickets_a)
 
       assert {:ok, %{tickets_buffer: tickets_b}} = Games.get_context(id, session_b.user_id)
-      assert Games.perform(id, session_b.user_id, {:select_tickets, tickets_b})
+      assert Games.select_tickets(id, session_b.user_id, tickets_b)
 
       assert :ok = Games.begin(id, session_a.user_id)
 
@@ -122,7 +122,7 @@ defmodule TtrCoreTest do
     if route_to_claim == :no_route do
       status
     else
-      case Games.perform(game_id, id, {:claim_route, route_to_claim, train, cost}) do
+      case Games.claim_route(game_id, id, route_to_claim, train, cost) do
         :ok -> %{status | finish_turn: true}
         {:error, _} -> status
       end
@@ -141,7 +141,7 @@ defmodule TtrCoreTest do
 
     if not Enum.empty?(displayed) do
       first = List.first(displayed)
-      :ok = Games.perform(game_id, user_id, {:select_trains, [first]})
+      :ok = Games.select_trains(game_id, user_id, [first])
     end
 
     status
@@ -158,7 +158,7 @@ defmodule TtrCoreTest do
     } = status
 
     if deck > 0 do
-      :ok = Games.perform(game_id, user_id, {:draw_trains, 1})
+      :ok = Games.draw_trains(game_id, user_id, 1)
     end
 
     status
@@ -175,7 +175,7 @@ defmodule TtrCoreTest do
     } = status
 
     if deck >= 3 do
-      :ok = Games.perform(game_id, user_id, :draw_tickets)
+      :ok = Games.draw_tickets(game_id, user_id)
     end
 
     status
@@ -194,13 +194,13 @@ defmodule TtrCoreTest do
       Games.get_context(game_id, user_id)
 
     if not Enum.empty?(buffer) do
-      :ok = Games.perform(game_id, user_id, {:select_tickets, buffer})
+      :ok = Games.select_tickets(game_id, user_id, buffer)
     end
 
     status
   end
 
   defp end_turn(%{context: %{id: id, game_id: game_id}}) do
-    Games.perform(game_id, id, :end_turn)
+    Games.end_turn(game_id, id)
   end
 end

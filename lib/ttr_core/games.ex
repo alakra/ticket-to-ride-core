@@ -13,7 +13,6 @@ defmodule TtrCore.Games do
   alias TtrCore.Mechanics.State
 
   alias TtrCore.Games.{
-    Action,
     Game,
     Index
   }
@@ -200,23 +199,87 @@ defmodule TtrCore.Games do
   end
 
   @doc """
-  Performs action on turn. An `:ok` is returned on success. You must
-  `get_context/2` to see your updated state.
+  Select tickets that were drawn into buffer for a player.
 
-  If the game id does not exist, an `{:error, :not_found}` tuple is
-  returned.
-
-  If the user provided in the request does not have the current turn,
-  an `{:error, :not_your_turn}` tuple is returned.
+  Delegates to `TtrCore.Mechanics.select_tickets/3` with the game
+  state.
   """
-  @spec perform(game_id(), user_id(), Action.t) ::
-    :ok | {:error, :not_found | :not_your_turn | reason()}
-  def perform(game_id, user_id, action) do
+  @spec select_tickets(game_id(), user_id(), [TicketCard.t]) :: :ok | {:error, :not_found | reason()}
+  def select_tickets(game_id, user_id, tickets) do
     case Registry.lookup(Index, game_id) do
-      [{pid, _}] ->
-        Game.perform(pid, user_id, action)
-      _ ->
-        {:error, :not_found}
+      [{pid, _}] -> Game.select_tickets(pid, user_id, tickets)
+      _ -> {:error, :not_found}
+    end
+  end
+
+  @doc """
+  Draw tickets from deck to a player for selections. Always draws 3
+  and places them in the players selection buffer.
+
+  Delegates to `TtrCore.Mechanics.draw_tickets/2` with the game
+  state.
+  """
+  @spec draw_tickets(game_id(), user_id()) :: :ok | {:error, :not_found | reason()}
+  def draw_tickets(game_id, user_id) do
+    case Registry.lookup(Index, game_id) do
+      [{pid, _}] -> Game.draw_tickets(pid, user_id)
+      _ -> {:error, :not_found}
+    end
+  end
+
+  @doc """
+  Select trains from the display deck and replenish train display.
+
+  Delegates to `TtrCore.Mechanics.select_trains/3` with the game
+  state.
+  """
+  @spec select_tickets(game_id(), user_id(), [TrainCard.t]) :: :ok | {:error, :not_found | reason()}
+  def select_trains(game_id, user_id, trains) do
+    case Registry.lookup(Index, game_id) do
+      [{pid, _}] -> Game.select_trains(pid, user_id, trains)
+      _ -> {:error, :not_found}
+    end
+  end
+
+  @doc """
+  Draws trains to a player from the a train deck. Can draw 1 or 2 cards.
+
+  Delegates to `TtrCore.Mechanics.draw_trains/3` with the game
+  state.
+  """
+  @spec draw_trains(game_id(), user_id(), integer) :: :ok | {:error, :not_found | reason()}
+  def draw_trains(game_id, user_id, count) do
+    case Registry.lookup(Index, game_id) do
+      [{pid, _}] -> Game.draw_trains(pid, user_id, count)
+      _ -> {:error, :not_found}
+    end
+  end
+
+  @doc """
+  Claims a route for a player and pays out the cost in trains.
+
+  Delegates to `TtrCore.Mechanics.claim_route/5` with the game
+  state.
+  """
+  @spec claim_route(game_id(), user_id(), Route.t, TrainCard.t, integer()) :: :ok | {:error, :not_found | reason()}
+  def claim_route(game_id, user_id, route, train_card, cost) do
+    case Registry.lookup(Index, game_id) do
+      [{pid, _}] -> Game.claim_route(pid, user_id, route, train_card, cost)
+      _ -> {:error, :not_found}
+    end
+  end
+
+  @doc """
+  End a player's turn.
+
+  Delegates to `TtrCore.Mechanics.end_turn/2` with the game
+  state.
+  """
+  @spec end_turn(game_id(), user_id()) :: :ok | {:error, :not_found | reason()}
+  def end_turn(game_id, user_id) do
+    case Registry.lookup(Index, game_id) do
+      [{pid, _}] -> Game.end_turn(pid, user_id)
+      _ -> {:error, :not_found}
     end
   end
 

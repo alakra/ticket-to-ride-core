@@ -3,8 +3,12 @@ defmodule TtrCore.Games.Game do
 
   use GenServer
 
+  alias TtrCore.Cards.{
+    TicketCard,
+    TrainCard
+  }
+
   alias TtrCore.Games.{
-    Action,
     Index,
     Ticker,
     Turns
@@ -62,9 +66,34 @@ defmodule TtrCore.Games.Game do
     GenServer.call(game, {:leave, user_id})
   end
 
-  @spec perform(game(), User.id, Action.t) :: :ok | {:error, reason()}
-  def perform(game, user_id, action) do
-    GenServer.call(game, {:perform, user_id, action})
+  @spec select_tickets(game(), User.id, [TicketCard.t]) :: :ok | {:error, reason()}
+  def select_tickets(game, user_id, tickets) do
+    GenServer.call(game, {:select_tickets, user_id, tickets})
+  end
+
+  @spec draw_tickets(game(), User.id) :: :ok
+  def draw_tickets(game, user_id) do
+    GenServer.call(game, {:draw_tickets, user_id})
+  end
+
+  @spec select_trains(game(), User.id, [TrainCard.t]) :: :ok | {:error, reason()}
+  def select_trains(game, user_id, trains) do
+    GenServer.call(game, {:select_trains, user_id, trains})
+  end
+
+  @spec draw_trains(game(), User.id, integer()) :: :ok | {:error, reason()}
+  def draw_trains(game, user_id, count) do
+    GenServer.call(game, {:draw_trains, user_id, count})
+  end
+
+  @spec claim_route(game(), User.id, Route.t, TrainCard.t, integer()) :: :ok | {:error, reason()}
+  def claim_route(game, user_id, route, train_card, cost) do
+    GenServer.call(game, {:claim_route, user_id, route, train_card, cost})
+  end
+
+  @spec end_turn(game(), User.id) :: :ok | {:error, reason}
+  def end_turn(game, user_id) do
+    GenServer.call(game, {:end_turn, user_id})
   end
 
   @spec force_end_turn(game()) :: :ok
@@ -126,37 +155,37 @@ defmodule TtrCore.Games.Game do
     end
   end
 
-  def handle_call({:perform, user_id, {:select_tickets, tickets}}, _from, state) do
+  def handle_call({:select_tickets, user_id, tickets}, _from, state) do
     case Mechanics.select_tickets(state, user_id, tickets) do
       {:ok, new_state} -> {:reply, :ok, new_state}
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
   end
 
-  def handle_call({:perform, user_id, :draw_tickets}, _from, state) do
+  def handle_call({:draw_tickets, user_id}, _from, state) do
     {:reply, :ok, Mechanics.draw_tickets(state, user_id)}
   end
 
-  def handle_call({:perform, user_id, {:select_trains, trains}}, _from, state) do
+  def handle_call({:select_trains, user_id, trains}, _from, state) do
     case Mechanics.select_trains(state, user_id, trains) do
       {:ok, new_state} -> {:reply, :ok, new_state}
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
   end
 
-  def handle_call({:perform, user_id, {:draw_trains, count}}, _from, state) do
+  def handle_call({:draw_trains, user_id, count}, _from, state) do
     {:ok, new_state} = Mechanics.draw_trains(state, user_id, count)
     {:reply, :ok, new_state}
   end
 
-  def handle_call({:perform, user_id, {:claim_route, route, train_card, cost}}, _from, state) do
+  def handle_call({:claim_route, user_id, route, train_card, cost}, _from, state) do
     case Mechanics.claim_route(state, user_id, route, train_card, cost) do
       {:ok, new_state} -> {:reply, :ok, new_state}
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
   end
 
-  def handle_call({:perform, user_id, :end_turn}, _from, state) do
+  def handle_call({:end_turn, user_id}, _from, state) do
     case Mechanics.end_turn(state, user_id) do
       {:ok, new_state} -> {:reply, :ok, new_state}
       {:error, reason} -> {:reply, {:error, reason}, state}

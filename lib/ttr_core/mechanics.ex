@@ -297,22 +297,22 @@ defmodule TtrCore.Mechanics do
   Returns `{:error, :unavailable}` if the route is not eligible to be
   claimed.
   """
-  @spec claim_route(State.t, User.id, Route.t, TrainCard.t, cost()) ::
+  @spec claim_route(State.t, User.id, Route.t, [TrainCard.t]) ::
   {:ok, State.t} | {:error, :unavailable}
-  def claim_route(%{players: players, discard_deck: discard} = state, user_id, route, train, cost) do
-    %{trains: trains, pieces: pieces} = player = Players.find_by_id(players, user_id)
+  def claim_route(%{players: players, discard_deck: discard} = state, user_id, route, trains_used) do
+    player = Players.find_by_id(players, user_id)
 
     claimed   = Players.get_claimed_routes(players)
     claimable = Board.get_claimable_routes(claimed, player, Enum.count(players))
 
     has_stake  = Enum.member?(claimable, route)
-    has_trains = Enum.count(trains) >= cost
-    has_pieces = pieces >= cost
+    has_trains = Players.can_use_trains_for_route?(player, route, trains_used)
+    has_pieces = Players.has_enough_pieces?(player, route)
 
     if has_stake and has_trains and has_pieces do
       {updated_player, removed} = player
-      |> Players.add_route(route, cost)
-      |> Players.remove_trains(train, cost)
+      |> Players.add_route(route)
+      |> Players.remove_trains(trains_used)
 
       updated_players = Players.replace_player(players, updated_player)
       new_discard = Cards.add_trains_to_discard(discard, removed)

@@ -28,8 +28,8 @@ defmodule TtrCore.Players.Player do
     routes: [Route.t]
   }
 
-  @spec add_route(t, Route.t, integer()) :: t
-  def add_route(%{routes: existing, pieces: pieces} = player, new, cost) do
+  @spec add_route(t, Route.t) :: t
+  def add_route(%{routes: existing, pieces: pieces} = player, {_, _, cost, _} = new) do
     %{player | routes: [new|existing], pieces: pieces - cost}
   end
 
@@ -43,11 +43,11 @@ defmodule TtrCore.Players.Player do
     %{player | trains: new ++ existing, trains_selected: Enum.count(new) + selected_count}
   end
 
-  @spec remove_trains(t, TrainCard.t, integer) :: t
-  def remove_trains(%{trains: existing} = player, train, count) do
-    remaining = existing -- ([train] |> Stream.cycle() |> Enum.take(count))
-    updated_player = %{player | trains: remaining}
-    {updated_player, remaining}
+  @spec remove_trains(t, TrainCard.t) :: {t, [TrainCard.t]}
+  def remove_trains(%{trains: existing} = player, trains) do
+    removed = existing -- trains
+    updated_player = %{player | trains: removed}
+    {updated_player, removed}
   end
 
   @spec add_tickets(t, [TicketCard.t]) :: t

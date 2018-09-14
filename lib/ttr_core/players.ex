@@ -5,6 +5,9 @@ defmodule TtrCore.Players do
 
   use Supervisor
 
+  alias TtrCore.Board.Route
+  alias TtrCore.Cards.TrainCard
+
   alias TtrCore.Players.{
     DB,
     Player,
@@ -58,6 +61,26 @@ defmodule TtrCore.Players do
   end
 
   @doc """
+  Tells whether or not a player can use a set of trains for claiming a route
+  """
+  @spec can_use_trains_for_route?(Player.t, Route.t, [TrainCard.t]) :: boolean()
+  def can_use_trains_for_route?(%{trains: trains}, {_, _, cost, train}, [first|_] = train_cards) do
+    has_trains = Enum.empty?(train_cards -- trains)
+
+    results = Enum.reduce(train_cards, cost, fn card, acc ->
+      cond do
+        card == train -> acc - 1
+        card == :locomotive -> acc - 1
+        train == :any and first == card -> acc - 1
+        :no_match -> acc
+      end
+    end)
+
+    has_match = results == 0
+    has_trains and has_match
+  end
+
+  @doc """
   Finds a player from a list of players by id.
   """
   @spec find_by_id([Player.t], user_id()) :: Player.t
@@ -74,6 +97,14 @@ defmodule TtrCore.Players do
     fn session -> session.user_id end
     |> Session.find_active()
     |> DB.find_users()
+  end
+
+  @doc """
+  Checks whether a player has enough pieces to use on a particular route.
+  """
+  @spec has_enough_pieces?(Player.t, Route.t) :: boolean()
+  def has_enough_pieces?(%{pieces: pieces}, {_, _, cost, _}) do
+    pieces >= cost
   end
 
   @doc """
@@ -183,14 +214,14 @@ defmodule TtrCore.Players do
   @doc """
   Add route to player with cost
   """
-  @spec add_route(Player.t, Route.t, integer()) :: Player.t
-  defdelegate add_route(player, route, count), to: Player
+  @spec add_route(Player.t, Route.t) :: Player.t
+  defdelegate add_route(player, route), to: Player
 
   @doc """
-  Remove specific number of trains from player
+  Remove specific trains from player
   """
-  @spec remove_trains(Player.t, TrainCard.t, integer()) :: Player.t
-  defdelegate remove_trains(player, train, count), to: Player
+  @spec remove_trains(Player.t, [TrainCard.t]) :: Player.t
+  defdelegate remove_trains(player, trains), to: Player
 
   @doc """
   Remove tickets from player's buffer. Looks at the passed in

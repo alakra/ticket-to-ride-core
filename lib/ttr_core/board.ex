@@ -28,4 +28,5 @@ defmodule TtrCore.Board do
   def get_claimable_routes(claimed, %{routes: routes}, player_count) do
     Routes.get_claimable_routes(claimed, routes, player_count)
   end
+
 end

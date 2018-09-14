@@ -261,10 +261,10 @@ defmodule TtrCore.Games do
   Delegates to `TtrCore.Mechanics.claim_route/5` with the game
   state.
   """
-  @spec claim_route(game_id(), user_id(), Route.t, TrainCard.t, integer()) :: :ok | {:error, :not_found | reason()}
-  def claim_route(game_id, user_id, route, train_card, cost) do
+  @spec claim_route(game_id(), user_id(), Route.t, [TrainCard.t]) :: :ok | {:error, :not_found | reason()}
+  def claim_route(game_id, user_id, route, train_cards) do
     case Registry.lookup(Index, game_id) do
-      [{pid, _}] -> Game.claim_route(pid, user_id, route, train_card, cost)
+      [{pid, _}] -> Game.claim_route(pid, user_id, route, train_cards)
       _ -> {:error, :not_found}
     end
   end

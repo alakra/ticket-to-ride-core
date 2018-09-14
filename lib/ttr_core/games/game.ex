@@ -86,9 +86,9 @@ defmodule TtrCore.Games.Game do
     GenServer.call(game, {:draw_trains, user_id, count})
   end
 
-  @spec claim_route(game(), User.id, Route.t, TrainCard.t, integer()) :: :ok | {:error, reason()}
-  def claim_route(game, user_id, route, train_card, cost) do
-    GenServer.call(game, {:claim_route, user_id, route, train_card, cost})
+  @spec claim_route(game(), User.id, Route.t, [TrainCard.t]) :: :ok | {:error, reason()}
+  def claim_route(game, user_id, route, train_cards) do
+    GenServer.call(game, {:claim_route, user_id, route, train_cards})
   end
 
   @spec end_turn(game(), User.id) :: :ok | {:error, reason}
@@ -178,8 +178,8 @@ defmodule TtrCore.Games.Game do
     {:reply, :ok, new_state}
   end
 
-  def handle_call({:claim_route, user_id, route, train_card, cost}, _from, state) do
-    case Mechanics.claim_route(state, user_id, route, train_card, cost) do
+  def handle_call({:claim_route, user_id, route, train_cards}, _from, state) do
+    case Mechanics.claim_route(state, user_id, route, train_cards) do
       {:ok, new_state} -> {:reply, :ok, new_state}
       {:error, reason} -> {:reply, {:error, reason}, state}
     end

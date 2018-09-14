@@ -2,7 +2,10 @@ defmodule TtrCore.PlayersTest do
   use ExUnit.Case, async: false
 
   alias TtrCore.Players
-  alias TtrCore.Players.User
+  alias TtrCore.Players.{
+    Player,
+    User
+  }
 
   setup do
     start_supervised(Players)
@@ -78,6 +81,64 @@ defmodule TtrCore.PlayersTest do
       {:ok, _id} = Players.register(username_b, password_b)
 
       assert [%User{}, %User{}] = Players.get_users()
+    end
+  end
+
+  describe "can_use_trains_for_route?/3" do
+    test "provides correct number/type of cards" do
+      player = %Player{trains: [:caboose, :caboose, :caboose, :freight]}
+      route  = {:a, :b, 3, :caboose}
+      trains = [:caboose, :caboose, :caboose]
+
+      assert Players.can_use_trains_for_route?(player, route, trains)
+    end
+
+    test "provides correct number of cards, but wrong type" do
+      player = %Player{trains: [:freight, :freight, :freight]}
+      route  = {:a, :b, 3, :caboose}
+      trains = [:freight, :freight, :freight]
+
+      refute Players.can_use_trains_for_route?(player, route, trains)
+    end
+
+    test "provides correct type of card, but wrong number" do
+      player = %Player{trains: [:caboose, :caboose, :caboose, :freight]}
+      route  = {:a, :b, 3, :caboose}
+      trains = [:caboose, :caboose]
+
+      refute Players.can_use_trains_for_route?(player, route, trains)
+    end
+
+    test "provides correct type/number of cards with inclusion of one locomotive" do
+      player = %Player{trains: [:caboose, :caboose, :caboose, :locomotive]}
+      route  = {:a, :b, 3, :caboose}
+      trains = [:caboose, :caboose, :locomotive]
+
+      assert Players.can_use_trains_for_route?(player, route, trains)
+    end
+
+    test "provides too many cards of the same type" do
+      player = %Player{trains: [:caboose, :caboose, :caboose, :caboose]}
+      route  = {:a, :b, 3, :caboose}
+      trains = [:caboose, :caboose, :caboose, :caboose]
+
+      refute Players.can_use_trains_for_route?(player, route, trains)
+    end
+
+    test "provides mixed card types for an :any train" do
+      player = %Player{trains: [:caboose, :caboose, :caboose, :freight]}
+      route  = {:a, :b, 3, :any}
+      trains = [:caboose, :freight, :caboose]
+
+      refute Players.can_use_trains_for_route?(player, route, trains)
+    end
+
+    test "provides consistent card types for an :any train" do
+      player = %Player{trains: [:caboose, :caboose, :caboose, :freight]}
+      route  = {:a, :b, 3, :any}
+      trains = [:caboose, :caboose, :caboose]
+
+      assert Players.can_use_trains_for_route?(player, route, trains)
     end
   end
 end

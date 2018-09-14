@@ -179,10 +179,9 @@ routes = Board.get_claimable_routes(claimed)
 # Take a look at your routes, then make sure selections
 
 train = hd(context_a.trains)
-cost = 5
 route_to_claim = {Seattle, Vancouver, 1, :any}
 
-:ok = Games.claim_route(game_id, user_id_a, route_to_claim, train, cost)
+:ok = Games.claim_route(game_id, user_id_a, route_to_claim, train)
 ```
 
 ##### Select trains from the display

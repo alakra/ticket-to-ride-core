@@ -184,8 +184,15 @@ defmodule TtrCore.Mechanics do
   Draws trains to a player from the a train deck. Can draw 1 or 2 cards.
   """
   @spec draw_trains(State.t, User.id, count()) :: {:ok, State.t}
-  def draw_trains(%{train_deck: deck, players: players} = state, user_id, count) do
-    player = Players.find_by_id(players, user_id)
+  def draw_trains(%{train_deck: [], discard_deck: []} = state, _, _), do: {:ok, state}
+  def draw_trains(%{train_deck: [], discard_deck: deck} = state, id, count) do
+    new_deck = Enum.shuffle(deck)
+    new_state = %{state | train_deck: new_deck, discard_deck: []}
+
+    draw_trains(new_state, id, count)
+  end
+  def draw_trains(%{train_deck: deck, players: players} = state, id, count) do
+    player = Players.find_by_id(players, id)
     {remainder, updated_player} = Cards.draw_trains(deck, player, count)
     updated_players = Players.replace_player(players, updated_player)
 

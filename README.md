@@ -88,7 +88,7 @@ These things belongs elsewhere.
 
 ### Requirements
 
-* You must have `elixir` >= `1.6` with `mix` installed
+* You must have `elixir` >= `1.7` with `mix` installed
 * You must have `git` installed
 * You must be running 64-bit linux or macos (>= high sierra)
 

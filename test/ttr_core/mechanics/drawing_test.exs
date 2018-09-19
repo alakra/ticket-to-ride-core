@@ -10,11 +10,12 @@ defmodule TtrCore.Mechanics.DrawingTest do
   end
 
   describe "draw_trains/3" do
-    test "drawing from a train deck and discard deck that is empty", %{player: player} do
+    test "drawing from a train deck and discard deck that is empty", %{player: %{id: id} = player} do
       state = %State{
         train_deck: [],
         discard_deck: [],
-        players: [player]
+        players: [player],
+        current_player: id
       }
 
       {:ok, new_state} = Mechanics.draw_trains(state, player.id, 2)
@@ -22,11 +23,12 @@ defmodule TtrCore.Mechanics.DrawingTest do
       assert new_state == state
     end
 
-    test "drawing from an empty train deck with a filled discard deck", %{player: player} do
+    test "drawing from an empty train deck with a filled discard deck", %{player: %{id: id} = player} do
       state = %State{
         train_deck: [],
         discard_deck: [:caboose, :coal, :freight],
-        players: [player]
+        players: [player],
+        current_player: id
       }
 
       {:ok, new_state} = Mechanics.draw_trains(state, player.id, 2)

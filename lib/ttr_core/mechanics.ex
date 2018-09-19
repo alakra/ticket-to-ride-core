@@ -182,8 +182,14 @@ defmodule TtrCore.Mechanics do
 
   @doc """
   Draws trains to a player from the a train deck. Can draw 1 or 2 cards.
+
+  Returns `{:ok, state}` if the draw was successful.
+
+  Returns `{:error, :not_turn}` if the user asking for tickets is not
+  in possession of the turn.
   """
-  @spec draw_trains(State.t, User.id, count()) :: {:ok, State.t}
+  @spec draw_trains(State.t, User.id, count()) :: {:ok, State.t} | {:error, :not_turn}
+  def draw_trains(%{current_player: id}, user_id, _) when id != user_id, do: {:error, :not_turn}
   def draw_trains(%{train_deck: [], discard_deck: []} = state, _, _), do: {:ok, state}
   def draw_trains(%{train_deck: [], discard_deck: deck} = state, id, count) do
     new_deck = Enum.shuffle(deck)
@@ -219,16 +225,24 @@ defmodule TtrCore.Mechanics do
   @doc """
   Draw tickets from deck to a player for selections. Always draws 3
   and places them in the players selection buffer.
+
+  Returns `{:ok, state}` if draw was successful.
+
+  Returns `{:error, :not_turn}` if the user asking for tickets is not
+  in possession of the turn.
   """
-  @spec draw_tickets(State.t, User.id) :: State.t
+  @spec draw_tickets(State.t, User.id) :: {:ok, State.t} | {:error, :not_turn}
+  def draw_tickets(%{current_player: id}, user_id) when id != user_id, do: {:error, :not_turn}
   def draw_tickets(%{ticket_deck: deck, players: players} = state, user_id) do
     player = Players.find_by_id(players, user_id)
     {new_deck, updated_player} = Cards.draw_tickets(deck, player)
     updated_players = Players.replace_player(players, updated_player)
 
-    state
+    new_state = state
     |> Map.put(:ticket_deck, new_deck)
     |> Map.put(:players, updated_players)
+
+    {:ok, new_state}
   end
 
   @doc """
@@ -238,9 +252,15 @@ defmodule TtrCore.Mechanics do
 
   Returns `{:error, :invalid_tickets}` if the tickets selected were
   not available to be chosen.
+
+  Returns `{:error, :not_turn}` if the user asking for tickets is not
+  in possession of the turn. Turn is only checked when the game has
+  started or when on the last round.
   """
   @spec select_tickets(State.t, User.id, [TicketCard.t]) ::
-  {:ok, State.t} | {:error, :invalid_tickets}
+  {:ok, State.t} | {:error, :invalid_tickets | :not_turn}
+  def select_tickets(%{current_player: id, stage_meta: stage}, user_id, _)
+  when (stage == :started or stage == :last_round) and id != user_id, do: {:error, :not_turn}
   def select_tickets(%{ticket_deck: ticket_deck, players: players} = state, user_id, tickets) do
     player = Players.find_by_id(players, user_id)
 
@@ -270,9 +290,13 @@ defmodule TtrCore.Mechanics do
 
   Returns `{:error, :invalid_trains}` if the trains selected were
   not available to be chosen.
+
+  Returns `{:error, :not_turn}` if the user asking for trains is not
+  in possession of the turn.
   """
   @spec select_trains(State.t, User.id, [TrainCard.t]) ::
-  {:ok, State.t} | {:error, :invalid_trains}
+  {:ok, State.t} | {:error, :invalid_trains | :not_turn}
+  def select_trains(%{current_player: id}, user_id, _) when id != user_id, do: {:error, :not_turn}
   def select_trains(%{players: players, train_deck: train_deck, displayed_trains: displayed} = state, user_id, trains) do
     player = Players.find_by_id(players, user_id)
     selected = Enum.take(trains, 2) # Only grab up to 2 trains, ignore the rest
@@ -303,9 +327,13 @@ defmodule TtrCore.Mechanics do
 
   Returns `{:error, :unavailable}` if the route is not eligible to be
   claimed.
+
+  Returns `{:error, :not_turn}` if user is not in possession of the
+  turn.
   """
   @spec claim_route(State.t, User.id, Route.t, [TrainCard.t]) ::
   {:ok, State.t} | {:error, :unavailable}
+  def claim_route(%{current_player: id}, user_id, _, _) when id != user_id, do: {:error, :not_turn}
   def claim_route(%{players: players, discard_deck: discard} = state, user_id, route, trains_used) do
     player = Players.find_by_id(players, user_id)
 

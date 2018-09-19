@@ -163,7 +163,8 @@ defmodule TtrCore.Games.Game do
   end
 
   def handle_call({:draw_tickets, user_id}, _from, state) do
-    {:reply, :ok, Mechanics.draw_tickets(state, user_id)}
+    {:ok, state} = Mechanics.draw_tickets(state, user_id)
+    {:reply, :ok, state}
   end
 
   def handle_call({:select_trains, user_id, trains}, _from, state) do

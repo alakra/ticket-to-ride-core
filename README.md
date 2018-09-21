@@ -1,5 +1,7 @@
 # Ticket To Ride (Core Implementation, No Network)
 
+[![Build Status](https://travis-ci.org/alakra/ticket-to-ride-core.svg?branch=master)](https://travis-ci.org/alakra/ticket-to-ride-core)
+
 This is an implementation of Ticket to Ride (the American version) in
 Elixir. It not only has the mechanics of the board game, but also
 manages player registration, session management and delegation of

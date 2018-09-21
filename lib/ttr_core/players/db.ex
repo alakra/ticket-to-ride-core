@@ -37,7 +37,7 @@ defmodule TtrCore.Players.DB do
   def register(username, password) do
     case find_by_username(username) do
       :user_not_found ->
-        user_id = UUID.uuid1(:hex)
+        user_id = :crypto.strong_rand_bytes(32) |> Base.encode64()
 
         user =
           %User{

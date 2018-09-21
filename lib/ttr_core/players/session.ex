@@ -8,16 +8,16 @@ defmodule TtrCore.Players.Session do
   defstruct [:user_id, :name, :token, :expiration]
 
   @type t :: %__MODULE__{
-    user_id: uuid(),
+    user_id: id(),
     name: String.t,
-    token: uuid(),
+    token: id(),
     expiration: DateTime.t
   }
 
   @type user_id :: binary
   @type username :: String.t
   @type password :: String.t
-  @type uuid :: binary
+  @type id :: binary
 
   # TBD: Change this API to accept an customizable expiration for all
   # sessions
@@ -72,10 +72,14 @@ defmodule TtrCore.Players.Session do
   end
 
   defp generate_session(user) do
+    token = 32
+    |> :crypto.strong_rand_bytes()
+    |> Base.encode64()
+
     %__MODULE__{
       user_id: user.id,
       name: user.username,
-      token: UUID.uuid1(:hex),
+      token: token,
       expiration: generate_expiration()
     }
   end

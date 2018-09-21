@@ -25,9 +25,6 @@ defmodule TtrCore.Mixfile do
 
   defp deps do
     [
-      # All
-      {:uuid, "~> 1.1"},
-
       # Development
       {:benchee, "~> 0.13", only: :dev},
       {:credo, "~> 0.10.0", only: :dev},

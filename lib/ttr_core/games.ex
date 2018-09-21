@@ -67,7 +67,7 @@ defmodule TtrCore.Games do
   @spec create(user_id()) :: {:ok, game_id(), pid()} | {:error, :invalid_user_id}
   def create(user_id) do
     if Players.registered?(user_id) do
-      game_id     = UUID.uuid1(:hex)
+      game_id     = :crypto.strong_rand_bytes(32) |> Base.encode64()
       train_deck  = Cards.shuffle_trains()
       ticket_deck = Cards.shuffle_tickets()
 

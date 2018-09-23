@@ -20,7 +20,7 @@ defmodule TtrCore.Board.Routes do
   defroute Charleston,     to: Raleigh,        distance: 2
   defroute Charleston,     to: Miami,          distance: 4, trains: [:freight]
 
-  defroute Chicago,        to: Pittburgh,      distance: 3, trains: [:tanker, :hopper]
+  defroute Chicago,        to: Pittsburgh,      distance: 3, trains: [:tanker, :hopper]
   defroute Chicago,        to: Toronto,        distance: 4, trains: [:reefer]
   defroute Chicago,        to: Duluth,         distance: 3, trains: [:coal]
   defroute Chicago,        to: Omaha,          distance: 4, trains: [:passenger]

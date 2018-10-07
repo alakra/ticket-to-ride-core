@@ -74,7 +74,7 @@ defmodule TtrCore.Games do
       state = %State{
         id: game_id,
         owner_id: user_id,
-        players: [],
+        players: %{},
         train_deck: train_deck,
         ticket_deck: ticket_deck,
         displayed_trains: [],
@@ -304,7 +304,7 @@ defmodule TtrCore.Games do
   Returns contextual state based on player id in order to not reveal
   secrets to others for a particular game.
   """
-  @spec get_context(game_id(), user_id()) :: {:ok, Context.t} | {:error, :not_found | :not_joined}
+  @spec get_context(game_id(), user_id()) :: {:ok, Context.t} | {:error, :not_found | :not_joined | :user_not_found}
   def get_context(game_id, user_id) do
     case Registry.lookup(Index, game_id) do
       [{pid, _}] -> Game.get_context(pid, user_id)

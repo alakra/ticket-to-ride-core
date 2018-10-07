@@ -28,11 +28,11 @@ defmodule TtrCore.Cards do
 
   See `deal_trains/3` for  details.
   """
-  @spec deal_initial_trains([TrainCard.t], [Player.t]) :: {[TrainCard.t], [Player.t]}
+  @spec deal_initial_trains([TrainCard.t], Players.players()) :: {[TrainCard.t], Players.players()}
   def deal_initial_trains(train_deck, players) do
-    Enum.reduce(players, {train_deck, []}, fn player, {deck, acc} ->
+    Enum.reduce(players, {train_deck, %{}}, fn {id, player}, {deck, acc} ->
       {:ok, remainder, player} = deal_trains(deck, player, 4)
-      {remainder, acc ++ [player]}
+      {remainder, Map.put(acc, id, player)}
     end)
   end
 
@@ -42,11 +42,11 @@ defmodule TtrCore.Cards do
   It returns the remaining tickets and the modified players as a
   tuple.
   """
-  @spec deal_tickets([TicketCard.t], [Player.t]) :: {[TicketCard.t], [Player.t]}
+  @spec deal_tickets([TicketCard.t], Players.players()) :: {[TicketCard.t], Players.players()}
   def deal_tickets(ticket_deck, players) do
-    Enum.reduce(players, {ticket_deck, []}, fn player, {deck, acc} ->
+    Enum.reduce(players, {ticket_deck, %{}}, fn {id, player}, {deck, acc} ->
       {remainder, player} = draw_tickets(deck, player)
-      {remainder, acc ++ [player]}
+      {remainder, Map.put(acc, id, player)}
     end)
   end
 

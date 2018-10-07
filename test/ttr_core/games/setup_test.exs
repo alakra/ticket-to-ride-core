@@ -38,25 +38,25 @@ defmodule TtrCore.Games.SetupTest do
   end
 
   describe "setup/2" do
-    test "successfully begins setup of a game", %{game_id: game_id, owner_id: owner_id} do
+    test "successfully begins setup of a game", %{game_id: game_id, owner_id: owner_id, other_id: other_id} do
       assert :ok = Games.setup(game_id, owner_id)
 
       assert {:ok, %State{
         id: ^game_id,
         owner_id: ^owner_id,
         current_player: nil,
-        players: [
-          %Player{
+        players: %{
+          ^owner_id => %Player{
             tickets: tickets_a,
             tickets_buffer: buffer_a,
             trains: trains_a,
           },
-          %Player{
+          ^other_id => %Player{
             tickets: tickets_b,
             tickets_buffer: buffer_b,
             trains: trains_b
           }
-        ],
+        },
         train_deck: train_deck,
         ticket_deck: ticket_deck,
         displayed_trains: displayed,

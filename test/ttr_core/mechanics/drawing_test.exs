@@ -14,7 +14,7 @@ defmodule TtrCore.Mechanics.DrawingTest do
       state = %State{
         train_deck: [],
         discard_deck: [],
-        players: [player],
+        players: %{id => player},
         current_player: id
       }
 
@@ -27,7 +27,7 @@ defmodule TtrCore.Mechanics.DrawingTest do
       state = %State{
         train_deck: [],
         discard_deck: [:caboose, :coal, :freight],
-        players: [player],
+        players: %{id => player},
         current_player: id
       }
 

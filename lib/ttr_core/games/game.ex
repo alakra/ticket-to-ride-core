@@ -101,7 +101,7 @@ defmodule TtrCore.Games.Game do
     GenServer.cast(game, :force_end_turn)
   end
 
-  @spec get_context(game(), User.id) :: {:ok, Context.t} | {:error, :not_joined}
+  @spec get_context(game(), User.id) :: {:ok, Context.t} | {:error, :not_joined | :user_not_found}
   def get_context(game, user_id) do
     GenServer.call(game, {:get, :context, user_id})
   end
@@ -195,9 +195,12 @@ defmodule TtrCore.Games.Game do
 
   def handle_call({:get, :context, user_id}, _from, state) do
     if Mechanics.is_joined?(state, user_id) do
-      {:reply, {:ok, Mechanics.generate_context(state, user_id)}, state}
+      case Mechanics.generate_context(state, user_id) do
+        {:ok, context}   -> {:reply, {:ok, context}, state}
+        {:error, reason} -> {:reply, {:error, reason}, state}
+      end
     else
-      {:reply, {:error, :nor_joined}, state}
+      {:reply, {:error, :not_joined}, state}
     end
   end
 

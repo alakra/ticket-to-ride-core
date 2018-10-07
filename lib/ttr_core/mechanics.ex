@@ -104,15 +104,17 @@ defmodule TtrCore.Mechanics do
   """
   @spec is_joined?(State.t, User.id) :: boolean()
   def is_joined?(%{players: players}, user_id) do
-    Enum.any?(players, fn %{id: stored_id} -> stored_id == user_id end)
+    Map.has_key?(players, user_id)
   end
 
   @doc """
   Adds a player to the state.
   """
   @spec add_player(State.t, User.id) :: State.t
-  def add_player(%{players: players} = state, user_id) do
-    %{state | players: Players.add_player(players, user_id)}
+  def add_player(%{players: players, turn_order: order} = state, user_id) do
+    %{state |
+      players: Players.add_player(players, user_id),
+      turn_order: order ++ [user_id]}
   end
 
   @doc """
@@ -120,11 +122,12 @@ defmodule TtrCore.Mechanics do
   another player is automatically assigned as the owner.
   """
   @spec remove_player(State.t, User.id) :: State.t
-  def remove_player(%{players: players} = state, user_id) do
+  def remove_player(%{players: players, turn_order: order} = state, user_id) do
     updated_players = Players.remove_player(players, user_id)
 
     state
     |> Map.put(:players, updated_players)
+    |> Map.put(:turn_order, List.delete(order, user_id))
     |> transfer_ownership_if_host_left
   end
 
@@ -188,7 +191,7 @@ defmodule TtrCore.Mechanics do
   Returns `{:error, :not_turn}` if the user asking for tickets is not
   in possession of the turn.
   """
-  @spec draw_trains(State.t, User.id, count()) :: {:ok, State.t} | {:error, :not_turn}
+  @spec draw_trains(State.t, User.id, count()) :: {:ok, State.t} | {:error, :not_turn | :user_not_found}
   def draw_trains(%{current_player: id}, user_id, _) when id != user_id, do: {:error, :not_turn}
   def draw_trains(%{train_deck: [], discard_deck: []} = state, _, _), do: {:ok, state}
   def draw_trains(%{train_deck: [], discard_deck: deck} = state, id, count) do
@@ -198,15 +201,18 @@ defmodule TtrCore.Mechanics do
     draw_trains(new_state, id, count)
   end
   def draw_trains(%{train_deck: deck, players: players} = state, id, count) do
-    player = Players.find_by_id(players, id)
-    {remainder, updated_player} = Cards.draw_trains(deck, player, count)
-    updated_players = Players.replace_player(players, updated_player)
+    if player = players[id] do
+      {remainder, updated_player} = Cards.draw_trains(deck, player, count)
+      updated_players = Players.replace_player(players, updated_player)
 
-    new_state = state
-    |> Map.put(:train_deck, remainder)
-    |> Map.put(:players, updated_players)
+      new_state = state
+      |> Map.put(:train_deck, remainder)
+      |> Map.put(:players, updated_players)
 
-    {:ok, new_state}
+      {:ok, new_state}
+    else
+      {:error, :user_not_found}
+    end
   end
 
   @doc """
@@ -231,18 +237,21 @@ defmodule TtrCore.Mechanics do
   Returns `{:error, :not_turn}` if the user asking for tickets is not
   in possession of the turn.
   """
-  @spec draw_tickets(State.t, User.id) :: {:ok, State.t} | {:error, :not_turn}
+  @spec draw_tickets(State.t, User.id) :: {:ok, State.t} | {:error, :not_turn | :user_not_found}
   def draw_tickets(%{current_player: id}, user_id) when id != user_id, do: {:error, :not_turn}
   def draw_tickets(%{ticket_deck: deck, players: players} = state, user_id) do
-    player = Players.find_by_id(players, user_id)
-    {new_deck, updated_player} = Cards.draw_tickets(deck, player)
-    updated_players = Players.replace_player(players, updated_player)
+    if player = players[user_id] do
+      {new_deck, updated_player} = Cards.draw_tickets(deck, player)
+      updated_players = Players.replace_player(players, updated_player)
 
-    new_state = state
-    |> Map.put(:ticket_deck, new_deck)
-    |> Map.put(:players, updated_players)
+      new_state = state
+      |> Map.put(:ticket_deck, new_deck)
+      |> Map.put(:players, updated_players)
 
-    {:ok, new_state}
+      {:ok, new_state}
+    else
+      {:error, :user_not_found}
+    end
   end
 
   @doc """
@@ -258,28 +267,30 @@ defmodule TtrCore.Mechanics do
   started or when on the last round.
   """
   @spec select_tickets(State.t, User.id, [TicketCard.t]) ::
-  {:ok, State.t} | {:error, :invalid_tickets | :not_turn}
+  {:ok, State.t} | {:error, :invalid_tickets | :not_turn | :user_not_found}
   def select_tickets(%{current_player: id, stage_meta: stage}, user_id, _)
   when (stage == :started or stage == :last_round) and id != user_id, do: {:error, :not_turn}
   def select_tickets(%{ticket_deck: ticket_deck, players: players} = state, user_id, tickets) do
-    player = Players.find_by_id(players, user_id)
+    if player = players[user_id] do
+      if Players.has_tickets?(player, tickets) do
+        {updated_player, removed} = player
+        |> Players.add_tickets(tickets)
+        |> Players.remove_tickets_from_buffer(tickets)
 
-    if Players.has_tickets?(player, tickets) do
-      {updated_player, removed} = player
-      |> Players.add_tickets(tickets)
-      |> Players.remove_tickets_from_buffer(tickets)
+        updated_players = Players.replace_player(players, updated_player)
+        updated_tickets = Cards.return_tickets(ticket_deck, removed)
 
-      updated_players = Players.replace_player(players, updated_player)
-      updated_tickets = Cards.return_tickets(ticket_deck, removed)
+        new_state = state
+        |> Map.put(:ticket_deck, updated_tickets)
+        |> Map.put(:players, updated_players)
+        |> update_meta(user_id)
 
-      new_state = state
-      |> Map.put(:ticket_deck, updated_tickets)
-      |> Map.put(:players, updated_players)
-      |> update_meta(user_id)
-
-      {:ok, new_state}
+        {:ok, new_state}
+      else
+        {:error, :invalid_tickets}
+      end
     else
-      {:error, :invalid_tickets}
+      {:error, :user_not_found}
     end
   end
 
@@ -295,28 +306,31 @@ defmodule TtrCore.Mechanics do
   in possession of the turn.
   """
   @spec select_trains(State.t, User.id, [TrainCard.t]) ::
-  {:ok, State.t} | {:error, :invalid_trains | :not_turn}
+  {:ok, State.t} | {:error, :invalid_trains | :not_turn | :user_not_found}
   def select_trains(%{current_player: id}, user_id, _) when id != user_id, do: {:error, :not_turn}
   def select_trains(%{players: players, train_deck: train_deck, displayed_trains: displayed} = state, user_id, trains) do
-    player = Players.find_by_id(players, user_id)
-    selected = Enum.take(trains, 2) # Only grab up to 2 trains, ignore the rest
+    if player = players[user_id] do
+      selected = Enum.take(trains, 2) # Only grab up to 2 trains, ignore the rest
 
-    if Cards.has_cards?(displayed, selected) do
-      updated_player  = Players.add_trains_on_turn(player, selected)
-      updated_players = Players.replace_player(players, updated_player)
+      if Cards.has_cards?(displayed, selected) do
+        updated_player  = Players.add_trains_on_turn(player, selected)
+        updated_players = Players.replace_player(players, updated_player)
 
-      {new_display, new_deck} = displayed
-      |> Cards.remove_from_display(selected)
-      |> Cards.replenish_display(train_deck)
+        {new_display, new_deck} = displayed
+        |> Cards.remove_from_display(selected)
+        |> Cards.replenish_display(train_deck)
 
-      new_state = state
-      |> Map.put(:players, updated_players)
-      |> Map.put(:displayed_trains, new_display)
-      |> Map.put(:train_deck, new_deck)
+        new_state = state
+        |> Map.put(:players, updated_players)
+        |> Map.put(:displayed_trains, new_display)
+        |> Map.put(:train_deck, new_deck)
 
-      {:ok, new_state}
+        {:ok, new_state}
+      else
+        {:error, :invalid_trains}
+      end
     else
-      {:error, :invalid_trains}
+       {:error, :user_not_found}
     end
   end
 
@@ -335,30 +349,32 @@ defmodule TtrCore.Mechanics do
   {:ok, State.t} | {:error, :unavailable}
   def claim_route(%{current_player: id}, user_id, _, _) when id != user_id, do: {:error, :not_turn}
   def claim_route(%{players: players, discard_deck: discard} = state, user_id, route, trains_used) do
-    player = Players.find_by_id(players, user_id)
+    if player = players[user_id] do
+      claimed   = Players.get_claimed_routes(players)
+      claimable = Board.get_claimable_routes(claimed, player, Enum.count(players))
 
-    claimed   = Players.get_claimed_routes(players)
-    claimable = Board.get_claimable_routes(claimed, player, Enum.count(players))
+      has_stake  = Enum.member?(claimable, route)
+      has_trains = Players.can_use_trains_for_route?(player, route, trains_used)
+      has_pieces = Players.has_enough_pieces?(player, route)
 
-    has_stake  = Enum.member?(claimable, route)
-    has_trains = Players.can_use_trains_for_route?(player, route, trains_used)
-    has_pieces = Players.has_enough_pieces?(player, route)
+      if has_stake and has_trains and has_pieces do
+        {updated_player, removed} = player
+        |> Players.add_route(route)
+        |> Players.remove_trains(trains_used)
 
-    if has_stake and has_trains and has_pieces do
-      {updated_player, removed} = player
-      |> Players.add_route(route)
-      |> Players.remove_trains(trains_used)
+        updated_players = Players.replace_player(players, updated_player)
+        new_discard = Cards.add_trains_to_discard(discard, removed)
 
-      updated_players = Players.replace_player(players, updated_player)
-      new_discard = Cards.add_trains_to_discard(discard, removed)
+        new_state = state
+        |> Map.put(:discard_deck, new_discard)
+        |> Map.put(:players, updated_players)
 
-      new_state = state
-      |> Map.put(:discard_deck, new_discard)
-      |> Map.put(:players, updated_players)
-
-      {:ok, new_state}
+        {:ok, new_state}
+      else
+        {:error, :unavailable}
+      end
     else
-      {:error, :unavailable}
+      {:error, :user_not_found}
     end
   end
 
@@ -367,40 +383,43 @@ defmodule TtrCore.Mechanics do
   view a player has of other players (not including their secrets or
   the details of decks).
   """
-  @spec generate_context(State.t, User.id) :: Context.t
+  @spec generate_context(State.t, User.id) :: {:ok, Context.t} | {:error, :user_not_found}
   def generate_context(%{players: players} = state, user_id) do
-    player = Players.find_by_id(players, user_id)
+    if player = players[user_id] do
+      other_players = players
+      |> Enum.reject(fn {id, _} -> id == user_id end)
+      |> Enum.map(fn {_, player} ->
+        %OtherPlayer{
+          name: player.name,
+          tickets: Enum.count(player.tickets),
+          trains: Enum.count(player.trains),
+          pieces: player.pieces,
+          routes: player.routes
+        }
+      end)
 
-    other_players = players
-    |> Enum.reject(fn %{id: id} -> id == user_id end)
-    |> Enum.map(fn player ->
-      %OtherPlayer{
-        name: player.name,
-        tickets: Enum.count(player.tickets),
-        trains: Enum.count(player.trains),
-        pieces: player.pieces,
-        routes: player.routes
+      {:ok, %Context{
+         id: player.id,
+         stage: state.stage,
+         game_id: state.id,
+         name: player.name,
+         pieces: player.pieces,
+         tickets: player.tickets,
+         tickets_buffer: player.tickets_buffer,
+         trains: player.trains,
+         trains_selected: player.trains_selected,
+         routes: player.routes,
+         train_deck: Enum.count(state.train_deck),
+         ticket_deck: Enum.count(state.ticket_deck),
+         displayed_trains: state.displayed_trains,
+         current_player: state.current_player,
+         other_players: other_players,
+         longest_path_owner: state.longest_path_owner
+       }
       }
-    end)
-
-    %Context{
-      id: player.id,
-      stage: state.stage,
-      game_id: state.id,
-      name: player.name,
-      pieces: player.pieces,
-      tickets: player.tickets,
-      tickets_buffer: player.tickets_buffer,
-      trains: player.trains,
-      trains_selected: player.trains_selected,
-      routes: player.routes,
-      train_deck: Enum.count(state.train_deck),
-      ticket_deck: Enum.count(state.ticket_deck),
-      displayed_trains: state.displayed_trains,
-      current_player: state.current_player,
-      other_players: other_players,
-      longest_path_owner: state.longest_path_owner
-    }
+    else
+      {:error, :user_not_found}
+    end
   end
 
   @doc """
@@ -425,13 +444,13 @@ defmodule TtrCore.Mechanics do
   the `Ticker` timer.
   """
   @spec force_end_turn(State.t) :: State.t
-  def force_end_turn(%{players: players, current_player: current_id} = state) do
-    count = Enum.count(players)
-    index = Enum.find_index(players, fn %{id: id} -> id == current_id end)
+  def force_end_turn(%{current_player: current_id, turn_order: order} = state) do
+    count = Enum.count(order)
+    index = Enum.find_index(order, fn id -> id == current_id end)
 
     # Find out the next player's id and set it
     next = if index == (count - 1), do: 0, else: count - 1
-    %{id: id} = Enum.at(players, next)
+    id = Enum.at(order, next)
 
     new_state = state
     |> reset_players_selections()
@@ -446,7 +465,7 @@ defmodule TtrCore.Mechanics do
   defp move_stage(%{current_player: id, stage: :last_round, stage_meta: meta, players: players} = state) do
     if all_players_played_last_round?(players, meta) do
       # Get baseline scores for every player
-      scores = Enum.map(players, &(calculate_score(&1)))
+      scores = Enum.map(players, fn {_, player} -> calculate_score(player) end)
 
       # Get longest route length from player pool
       {_, _, _, longest} = Enum.max_by(scores, fn {_, _, _, length} -> length end)
@@ -492,14 +511,18 @@ defmodule TtrCore.Mechanics do
   defp calculate_score(player), do: Score.calculate(player)
 
   defp all_players_played_last_round?(players, meta) do
-    ids = players |> Enum.map(&(&1.id)) |> Enum.sort()
+    ids = players |> Map.keys() |> Enum.sort()
     meta_ids = Enum.sort(meta)
 
     ids == meta_ids
   end
 
   defp reset_players_selections(%{players: players} = state) do
-    %{state | players: Enum.map(players, &(Players.reset_selections(&1)))}
+    updated = Enum.reduce(players, %{}, fn {id, player}, acc ->
+      Map.put(acc, id, Players.reset_selections(player))
+    end)
+
+    %{state | players: updated}
   end
 
   defp display_trains(%{displayed_trains: displayed, train_deck: deck} = state) do
@@ -508,14 +531,8 @@ defmodule TtrCore.Mechanics do
   end
 
   defp transfer_ownership_if_host_left(%{players: players, owner_id: owner_id} = state) do
-    result = Enum.any?(players, &(&1.id == owner_id))
-
-    new_owner_id = case List.first(players) do
-                     nil -> :none
-                     %{id: id} -> id
-                   end
-
-    if result do
+    if players[owner_id] do
+      %{id: new_owner_id} = Players.select_random_player(players)
       %{state | owner_id: new_owner_id}
     else
       state
@@ -572,7 +589,7 @@ defmodule TtrCore.Mechanics do
   end
 
   defp validate_tickets_selected(errors, %{players: players, stage_meta: meta}) do
-    ids = Enum.map(players, fn player -> player.id end)
+    ids = Map.keys(players)
 
     if Enum.all?(ids, fn id -> Enum.member?(meta, id) end) do
       errors
@@ -582,7 +599,7 @@ defmodule TtrCore.Mechanics do
   end
 
   defp validate_no_duplicate_players(errors, players, user_id) do
-    if Enum.any?(players, fn %{id: stored_id} -> stored_id == user_id end) do
+    if Map.has_key?(players, user_id) do
       [{:error, :already_joined} | errors]
     else
       errors

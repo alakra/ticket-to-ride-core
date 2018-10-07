@@ -63,7 +63,7 @@ defmodule TtrCoreTest do
       assert is_integer(state.winner_score)
 
       assert state.players
-      |> Enum.map(&(Enum.count(&1.tickets)))
+      |> Enum.map(fn {_, player} -> Enum.count(player.tickets) end)
       |> Enum.sum() == 30
     else
       assert {:ok, context_a} = Games.get_context(id, session_a.user_id)
@@ -73,7 +73,7 @@ defmodule TtrCoreTest do
         c.current_player == c.id
       end)
 
-      player = Players.find_by_id(state.players, context.id)
+      player = state.players[state.current_player]
 
       routes = [context_a, context_b]
       |> Enum.flat_map(fn %{routes: routes} -> routes end)

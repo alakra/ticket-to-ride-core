@@ -62,18 +62,18 @@ defmodule TtrCore.Games.StartingTest do
         id: ^game_id,
         owner_id: ^owner_id,
         current_player: random_id,
-        players: [
-          %Player{
+        players: %{
+          ^owner_id => %Player{
             tickets: tickets_a,
             tickets_buffer: buffer_a,
             trains: trains_a
           },
-          %Player{
+          ^other_id => %Player{
             tickets: tickets_b,
             tickets_buffer: buffer_b,
             trains: trains_b
           }
-        ],
+        },
         train_deck: train_deck,
         ticket_deck: ticket_deck,
         displayed_trains: displayed,

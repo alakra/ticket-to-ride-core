@@ -19,6 +19,8 @@ defmodule TtrCore.Players do
   @type username() :: String.t
   @type password() :: binary()
 
+  @type players() :: %{required(user_id()) => Player.t}
+
   @doc """
   Starts player supervision tree.
   """
@@ -46,18 +48,21 @@ defmodule TtrCore.Players do
 
   @doc """
   Adds a player to a list of players with only a user id.
+
+  NOTE: If the user id already exists in the collection of players, it
+  will not be re-added.
   """
-  @spec add_player([Player.t], user_id()) :: [Player.t]
+  @spec add_player(players(), user_id()) :: players()
   def add_player(players, id) do
-    [%Player{id: id} | players]
+    Map.put_new(players, id, %Player{id: id})
   end
 
   @doc """
   Checks to see if any players are out of stock (2 or less trains)
   """
-  @spec any_out_of_stock?([Player.t]) :: boolean()
+  @spec any_out_of_stock?(players()) :: boolean()
   def any_out_of_stock?(players) do
-    Enum.any?(players, fn player -> Player.out_of_stock?(player) end)
+    Enum.any?(players, fn {_, player} -> Player.out_of_stock?(player) end)
   end
 
   @doc """
@@ -78,14 +83,6 @@ defmodule TtrCore.Players do
 
     has_match = results == 0
     has_trains and has_match
-  end
-
-  @doc """
-  Finds a player from a list of players by id.
-  """
-  @spec find_by_id([Player.t], user_id()) :: Player.t
-  def find_by_id(players, user_id) do
-    Enum.find(players, fn %{id: id} -> id == user_id end)
   end
 
   @doc """
@@ -118,9 +115,10 @@ defmodule TtrCore.Players do
   @doc """
   Selects a random player from a list of players.
   """
-  @spec select_random_player([Player.t]) :: Player.t
+  @spec select_random_player(players()) :: Player.t
   def select_random_player(players) do
-    Enum.random(players)
+    {_, player} = Enum.random(players)
+    player
   end
 
   @doc """
@@ -132,28 +130,26 @@ defmodule TtrCore.Players do
   @doc """
   Remove a player from a list of players.
   """
-  @spec remove_player([Player.t], user_id()) :: [Player.t]
+  @spec remove_player(players(), user_id()) :: players()
   def remove_player(players, user_id) do
-    index = Enum.find_index(players, &(&1.id == user_id))
-    List.delete_at(players, index)
+    Map.delete(players, user_id)
   end
 
   @doc """
   Replace an updated player in a list of players. Finds a player by
   id, replaces the struct and returns the updated list.
   """
-  @spec replace_player([Player.t], Player.t) :: [Player.t]
+  @spec replace_player(players(), Player.t) :: players()
   def replace_player(players, %{id: id} = player) do
-    index = Enum.find_index(players, fn player -> player.id == id end)
-    List.replace_at(players, index, player)
+    Map.put(players, id, player)
   end
 
   @doc """
   Returns a list of all player's routes combined.
   """
-  @spec get_claimed_routes([Player.t]) :: [Route.t]
+  @spec get_claimed_routes(players()) :: [Route.t]
   def get_claimed_routes(players) do
-    Enum.flat_map(players, fn %{routes: routes} -> routes end)
+    Enum.flat_map(players, fn {_, %{routes: routes}} -> routes end)
   end
 
   @doc """

@@ -41,8 +41,7 @@ defmodule TtrCore.Games do
   """
   @spec stop :: :ok
   def stop do
-    # TODO: Change this to DynamicSuperivsor in 1.7+
-    Supervisor.stop(__MODULE__)
+    DynamicSupervisor.stop(__MODULE__)
   end
 
   @doc """
@@ -67,7 +66,10 @@ defmodule TtrCore.Games do
   @spec create(user_id()) :: {:ok, game_id(), pid()} | {:error, :invalid_user_id}
   def create(user_id) do
     if Players.registered?(user_id) do
-      game_id     = :crypto.strong_rand_bytes(32) |> Base.encode64()
+      game_id = 32
+      |> :crypto.strong_rand_bytes()
+      |> Base.encode64()
+
       train_deck  = Cards.shuffle_trains()
       ticket_deck = Cards.shuffle_tickets()
 

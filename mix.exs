@@ -4,7 +4,7 @@ defmodule TtrCore.Mixfile do
   def project do
     [app: :ttr_core,
      version: "1.0.0",
-     elixir: "~> 1.8",
+     elixir: "~> 1.9",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      aliases: aliases(),

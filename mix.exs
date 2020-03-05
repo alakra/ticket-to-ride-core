@@ -26,7 +26,7 @@ defmodule TtrCore.Mixfile do
   defp deps do
     [
       # Development
-      {:benchee, "~> 0.13", only: :dev},
+      {:benchee, "~> 1.0", only: :dev},
       {:credo, "~> 1.0", only: :dev},
       {:dialyzex, "~> 1.1", only: :dev},
       {:ex_doc, "~> 0.19", only: :dev, runtime: false},

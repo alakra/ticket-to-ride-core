@@ -27,9 +27,9 @@ defmodule TtrCore.Mixfile do
     [
       # Development
       {:benchee, "~> 1.0", only: :dev},
-      {:credo, "~> 1.0", only: :dev},
-      {:dialyzex, "~> 1.1", only: :dev},
-      {:ex_doc, "~> 0.19", only: :dev, runtime: false},
+      {:credo, "~> 1.2", only: :dev},
+      {:dialyzex, "~> 1.2", only: :dev},
+      {:ex_doc, "~> 0.21", only: :dev, runtime: false},
     ]
   end
 end

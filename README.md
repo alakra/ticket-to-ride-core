@@ -90,7 +90,7 @@ These things belongs elsewhere.
 
 ### Requirements
 
-* You must have `elixir` >= `1.7` with `mix` installed
+* You must have `elixir` >= `1.9` and `erlang` >= `22`
 * You must have `git` installed
 * You must be running 64-bit linux or macos (>= high sierra)
 
